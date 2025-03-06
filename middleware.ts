@@ -11,6 +11,8 @@ export async function middleware(req: NextRequest) {
     data: { session },
   } = await supabase.auth.getSession()
 
+  console.log("my session lo", session);
+
   // Protected routes - redirect to login if not authenticated
   const protectedRoutes = ["/dashboard", "/patients", "/appointments", "/staff", "/inventory", "/billing", "/reports"]
 

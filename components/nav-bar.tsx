@@ -39,7 +39,7 @@ export function NavBar() {
             <div className="flex flex-shrink-0 items-center">
               <Link href="/" className="flex items-center">
                 <HospitalIcon className="h-8 w-8 text-primary" />
-                <span className="ml-2 text-xl font-bold">HMS</span>
+                <span className="ml-2 text-xl font-bold">CareSanar</span>
               </Link>
             </div>
 
