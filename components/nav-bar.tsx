@@ -20,7 +20,7 @@ export function NavBar() {
   const pathname = usePathname()
 
   // Mock authentication state - replace with actual auth logic
-  const isLoggedIn = false
+  const isLoggedIn = true;
   const userRole = "guest" // 'admin', 'doctor', 'nurse', 'patient', etc.
 
   const navigation = [

@@ -1,10 +1,10 @@
 import type React from "react"
-import "@/styles/globals.css"
+import "./global.css";
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import { NavBar } from "@/components/nav-bar"
 import { ThemeProvider } from "@/components/theme-provider"
-
+import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
@@ -34,5 +34,3 @@ export default function RootLayout({
 }
 
 
-
-import './globals.css'
