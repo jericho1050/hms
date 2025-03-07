@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { HospitalIcon, Menu, X, UserCircle, LogOut, Settings, Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -14,14 +14,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { useAuth } from "@/hooks/use-auth"
 
 export function NavBar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, isAuthenticated, isLoading, signOut } = useAuth()
 
-  // Mock authentication state - replace with actual auth logic
-  const isLoggedIn = true;
-  const userRole = "guest" // 'admin', 'doctor', 'nurse', 'patient', etc.
+  const handleLogout = async () => {
+    await signOut()
+    router.push('/auth/login')
+  }
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard" },
@@ -45,7 +49,7 @@ export function NavBar() {
 
             {/* Desktop navigation */}
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-              {isLoggedIn &&
+              {isAuthenticated &&
                 navigation.map((item) => (
                   <Link
                     key={item.name}
@@ -66,7 +70,9 @@ export function NavBar() {
           <div className="flex items-center">
             <ThemeToggle />
 
-            {isLoggedIn ? (
+            {isLoading ? (
+              <div className="ml-4 h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+            ) : isAuthenticated ? (
               <div className="flex items-center ml-4">
                 <Button variant="ghost" size="icon" className="mr-2">
                   <Bell className="h-5 w-5" />
@@ -79,17 +85,21 @@ export function NavBar() {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                    <DropdownMenuItem>
-                      <UserCircle className="mr-2 h-4 w-4" />
-                      Profile
+                    <DropdownMenuLabel>{user?.email}</DropdownMenuLabel>
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile">
+                        <UserCircle className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem>
-                      <Settings className="mr-2 h-4 w-4" />
-                      Settings
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Settings
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleLogout}>
                       <LogOut className="mr-2 h-4 w-4" />
                       Logout
                     </DropdownMenuItem>
@@ -121,7 +131,7 @@ export function NavBar() {
       {mobileMenuOpen && (
         <div className="sm:hidden">
           <div className="space-y-1 pb-3 pt-2">
-            {isLoggedIn &&
+            {isAuthenticated &&
               navigation.map((item) => (
                 <Link
                   key={item.name}
@@ -136,7 +146,7 @@ export function NavBar() {
                   {item.name}
                 </Link>
               ))}
-            {!isLoggedIn && (
+            {!isAuthenticated && (
               <>
                 <Link
                   href="/auth/login"
@@ -160,4 +170,3 @@ export function NavBar() {
     </nav>
   )
 }
-
