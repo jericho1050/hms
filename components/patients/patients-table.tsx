@@ -36,7 +36,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { mockPatients } from "@/lib/mock-data"
+import { mockPatients } from "@/lib/mock-patients"
 import type { Patient } from "@/types/patients"
 
 interface PatientsTableProps {

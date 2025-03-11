@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CheckIcon, HospitalIcon, XIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { pricingPlans } from './mock-data';
+import { pricingPlans } from '../lib/mock-pricing';
 import { PlanButton } from '@/components/ui/plan-button';
 import { PricingPlan, PlanType } from '@/types/home';
 import Link from 'next/link';
