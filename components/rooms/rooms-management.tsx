@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BedIcon, Filter, Search, UserPlus, Users } from "lucide-react"
 import { RoomDetailsDialog } from "@/components/rooms/room-details-dialog"
 import { AssignBedDialog } from "@/components/rooms/assign-bed-dialog"
-import { getRooms, getDepartments } from "@/lib/mock-rooms-data"
+import { getRooms, getDepartments } from "@/lib/mock-rooms"
 import type { Room, Department, RoomStatus } from "@/types/rooms"
 
 export function RoomsManagement() {

@@ -12,7 +12,7 @@ import { PlusCircle, Search, Filter, RefreshCw, Users, UserCheck, UserX, Briefca
 import { StaffDirectory } from "@/components/staff/staff-directory"
 import { StaffAvailability } from "@/components/staff/staff-availability"
 import { NewStaffForm } from "@/components/staff/new-staff-form"
-import { mockStaffData } from "@/lib/mock-staff-data"
+import { mockStaffData } from "@/lib/mock-staff"
 import type { Staff } from "@/types/staff"
 
 export default function StaffManagementPage() {
