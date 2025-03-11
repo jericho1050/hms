@@ -36,8 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
-import { mockPatients } from "@/lib/mock-patients"
 import type { Patient } from "@/types/patients"
+import { usePatientData } from "@/hooks/use-patient"
 
 interface PatientsTableProps {
   searchQuery: string
@@ -45,7 +45,14 @@ interface PatientsTableProps {
 }
 
 export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps) {
-  const [patients, setPatients] = useState<Patient[]>([])
+  // Use the enhanced hook for patient data management
+  const { 
+    patients, 
+    isLoading, 
+    updatePatient, 
+    deletePatient 
+  } = usePatientData()
+  
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([])
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
@@ -56,11 +63,6 @@ export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps)
 
   const patientsPerPage = 10
   const totalPages = Math.ceil(filteredPatients.length / patientsPerPage)
-
-  // Fetch patients data (mock data for now)
-  useEffect(() => {
-    setPatients(mockPatients)
-  }, [])
 
   // Filter patients based on search query and gender filter
   useEffect(() => {
@@ -86,7 +88,10 @@ export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps)
   }, [patients, searchQuery, genderFilter])
 
   // Get current page patients
-  const currentPatients = filteredPatients.slice((currentPage - 1) * patientsPerPage, currentPage * patientsPerPage)
+  const currentPatients = filteredPatients.slice(
+    (currentPage - 1) * patientsPerPage, 
+    currentPage * patientsPerPage
+  )
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -107,31 +112,54 @@ export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps)
     setIsDeleteDialogOpen(true)
   }
 
-  const confirmDeletePatient = () => {
+  const confirmDeletePatient = async () => {
     if (!selectedPatient) return
 
-    // In a real app, this would call an API to delete the patient
-    setPatients(patients.filter((p) => p.id !== selectedPatient.id))
+    try {
+      const result = await deletePatient(selectedPatient.id)
+      
+      if (result.error) {
+        throw result.error
+      }
 
-    toast({
-      title: "Patient deleted",
-      description: `${selectedPatient.firstName} ${selectedPatient.lastName} has been removed`,
-      variant: "destructive",
-    })
-
-    setIsDeleteDialogOpen(false)
+      toast({
+        title: "Patient deleted",
+        description: `${selectedPatient.firstName} ${selectedPatient.lastName} has been removed`,
+      })
+    } catch (error) {
+      console.error("Error deleting patient:", error)
+      toast({
+        title: "Error",
+        description: "Failed to delete patient",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleteDialogOpen(false)
+    }
   }
 
-  const handleUpdatePatient = (updatedPatient: Patient) => {
-    // In a real app, this would call an API to update the patient
-    setPatients(patients.map((p) => (p.id === updatedPatient.id ? updatedPatient : p)))
+  const handleUpdatePatient = async (updatedPatient: Patient) => {
+    try {
+      const result = await updatePatient(updatedPatient)
+      
+      if (result.error) {
+        throw result.error
+      }
 
-    toast({
-      title: "Patient updated",
-      description: "Patient information has been updated successfully",
-    })
-
-    setIsEditModalOpen(false)
+      toast({
+        title: "Patient updated",
+        description: "Patient information has been updated successfully",
+      })
+    } catch (error) {
+      console.error("Error updating patient:", error)
+      toast({
+        title: "Error",
+        description: "Failed to update patient",
+        variant: "destructive",
+      })
+    } finally {
+      setIsEditModalOpen(false)
+    }
   }
 
   return (
@@ -150,7 +178,15 @@ export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps)
             </TableRow>
           </TableHeader>
           <TableBody>
-            {currentPatients.length > 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  <div className="flex flex-col items-center justify-center text-muted-foreground">
+                    <p>Loading patients...</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : currentPatients.length > 0 ? (
               currentPatients.map((patient) => (
                 <TableRow key={patient.id}>
                   <TableCell className="font-medium">{patient.id}</TableCell>

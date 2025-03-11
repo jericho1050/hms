@@ -34,7 +34,7 @@ const contactInfoSchema = z.object({
   address: z.string().min(5, "Address must be at least 5 characters"),
   city: z.string().min(2, "City must be at least 2 characters"),
   state: z.string().min(2, "State must be at least 2 characters"),
-  zipCode: z.string().min(5, "Zip code must be at least 5 characters"),
+  zipCode: z.string().min(4, "Zip code must be at least 5 characters"),
   phone: z.string().min(10, "Phone number must be at least 10 characters"),
   email: z.string().email("Invalid email address"),
 })
@@ -199,6 +199,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <FormField
+                key="step1-firstName"
                 control={form.control}
                 name="firstName"
                 render={({ field }) => (
@@ -212,6 +213,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
                 )}
               />
               <FormField
+                key="step1-lastName"
                 control={form.control}
                 name="lastName"
                 render={({ field }) => (
@@ -227,6 +229,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             </div>
 
             <FormField
+              key="step1-dateOfBirth"
               control={form.control}
               name="dateOfBirth"
               render={({ field }) => (
@@ -241,6 +244,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step1-gender"
               control={form.control}
               name="gender"
               render={({ field }) => (
@@ -264,6 +268,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step1-maritalStatus"
               control={form.control}
               name="maritalStatus"
               render={({ field }) => (
@@ -293,6 +298,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
         return (
           <div className="space-y-4">
             <FormField
+              key="step2-address"
               control={form.control}
               name="address"
               render={({ field }) => (
@@ -308,6 +314,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
 
             <div className="grid grid-cols-2 gap-4">
               <FormField
+                key="step2-city"
                 control={form.control}
                 name="city"
                 render={({ field }) => (
@@ -321,6 +328,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
                 )}
               />
               <FormField
+                key="step2-state"
                 control={form.control}
                 name="state"
                 render={({ field }) => (
@@ -336,6 +344,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             </div>
 
             <FormField
+              key="step2-zipCode"
               control={form.control}
               name="zipCode"
               render={({ field }) => (
@@ -350,6 +359,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step2-phone"
               control={form.control}
               name="phone"
               render={({ field }) => (
@@ -364,6 +374,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step2-email"
               control={form.control}
               name="email"
               render={({ field }) => (
@@ -383,6 +394,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
         return (
           <div className="space-y-4">
             <FormField
+              key="step3-bloodType"
               control={form.control}
               name="bloodType"
               render={({ field }) => (
@@ -412,6 +424,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step3-hasAllergies"
               control={form.control}
               name="hasAllergies"
               render={({ field }) => (
@@ -429,6 +442,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
 
             {form.watch("hasAllergies") && (
               <FormField
+                key="step3-allergies"
                 control={form.control}
                 name="allergies"
                 render={({ field }) => (
@@ -449,6 +463,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             )}
 
             <FormField
+              key="step3-currentMedications"
               control={form.control}
               name="currentMedications"
               render={({ field }) => (
@@ -467,6 +482,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step3-pastSurgeries"
               control={form.control}
               name="pastSurgeries"
               render={({ field }) => (
@@ -481,6 +497,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step3-chronicConditions"
               control={form.control}
               name="chronicConditions"
               render={({ field }) => (
@@ -504,6 +521,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
         return (
           <div className="space-y-4">
             <FormField
+              key="step4-contactName"
               control={form.control}
               name="contactName"
               render={({ field }) => (
@@ -518,6 +536,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step4-relationship"
               control={form.control}
               name="relationship"
               render={({ field }) => (
@@ -532,6 +551,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step4-contactPhone"
               control={form.control}
               name="contactPhone"
               render={({ field }) => (
@@ -546,6 +566,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             />
 
             <FormField
+              key="step4-contactAddress"
               control={form.control}
               name="contactAddress"
               render={({ field }) => (
@@ -565,6 +586,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
         return (
           <div className="space-y-4">
             <FormField
+              key="step5-hasInsurance"
               control={form.control}
               name="hasInsurance"
               render={({ field }) => (
@@ -583,6 +605,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
             {form.watch("hasInsurance") && (
               <>
                 <FormField
+                  key="step5-insuranceProvider"
                   control={form.control}
                   name="insuranceProvider"
                   render={({ field }) => (
@@ -598,6 +621,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
+                    key="step5-insuranceId"
                     control={form.control}
                     name="insuranceId"
                     render={({ field }) => (
@@ -612,6 +636,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
                   />
 
                   <FormField
+                    key="step5-groupNumber"
                     control={form.control}
                     name="groupNumber"
                     render={({ field }) => (
@@ -627,6 +652,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
                 </div>
 
                 <FormField
+                  key="step5-policyHolderName"
                   control={form.control}
                   name="policyHolderName"
                   render={({ field }) => (
@@ -641,6 +667,7 @@ export function NewPatientForm({ isOpen, onClose, onSubmit }: NewPatientFormProp
                 />
 
                 <FormField
+                  key="step5-relationshipToPatient"
                   control={form.control}
                   name="relationshipToPatient"
                   render={({ field }) => (

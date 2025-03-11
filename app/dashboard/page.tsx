@@ -32,13 +32,9 @@ export default function Dashboard() {
     loading, 
     stats, 
     fetchDashboardData, 
-    fetchPatientCount,
-    fetchAppointmentsCount,
-    fetchStaffCount,
-    fetchInventoryCount,
+    fetchDashboardMetrics,
     fetchMedicalRecordsCount,
     fetchBillingCount,
-    fetchRevenueThisMonth,
     fetchDepartmentsCount,
     fetchRoomsData
   } = useStatsData()
@@ -52,17 +48,17 @@ export default function Dashboard() {
   
   // Set up real-time subscriptions using the custom hook
   useSupabaseRealtime('patients', (payload) => {
-    fetchPatientCount()
+    fetchDashboardMetrics()
     handlePatientChange(payload)
   })
   
-  useSupabaseRealtime('appointments', () => fetchAppointmentsCount())
-  useSupabaseRealtime('staff', () => fetchStaffCount())
+  useSupabaseRealtime('appointments', () => fetchDashboardMetrics())
+  useSupabaseRealtime('staff', () => fetchDashboardMetrics())
   useSupabaseRealtime('medical_records', () => fetchMedicalRecordsCount())
-  useSupabaseRealtime('inventory', () => fetchInventoryCount())
+  useSupabaseRealtime('inventory', () => fetchDashboardMetrics())
   useSupabaseRealtime('billing', () => {
     fetchBillingCount()
-    fetchRevenueThisMonth()
+    fetchDashboardMetrics()
   })
   useSupabaseRealtime('departments', () => fetchDepartmentsCount())
   useSupabaseRealtime('rooms', () => fetchRoomsData())
@@ -90,48 +86,48 @@ export default function Dashboard() {
             value={stats.patientCount.toLocaleString()}
             description="Registered patients"
             icon={<Users className="h-5 w-5 text-blue-500" />}
-            trend="+5.2%"
-            trendDirection="up"
+            trend={stats.trends.patientCount}
+            trendDirection={stats.trendDirections.patientCount}
           />
           <StatsCard
             title="Today's Appointments"
             value={stats.appointmentsToday.toString()}
             description="Scheduled for today"
             icon={<Calendar className="h-5 w-5 text-indigo-500" />}
-            trend="+12%"
-            trendDirection="up"
+            trend={stats.trends.appointmentsToday}
+            trendDirection={stats.trendDirections.appointmentsToday}
           />
           <StatsCard
             title="Staff Members"
             value={stats.staffCount.toString()}
             description="Doctors, nurses & staff"
             icon={<HeartPulse className="h-5 w-5 text-red-500" />}
-            trend="No change"
-            trendDirection="neutral"
+            trend={stats.trends.staffCount}
+            trendDirection={stats.trendDirections.staffCount}
           />
           <StatsCard
             title="Monthly Revenue"
             value={`$${stats.revenueThisMonth.toLocaleString()}`}
             description="This month"
             icon={<DollarSign className="h-5 w-5 text-green-500" />}
-            trend="+8.3%"
-            trendDirection="up"
+            trend={stats.trends.revenueThisMonth}
+            trendDirection={stats.trendDirections.revenueThisMonth}
           />
           <StatsCard
             title="Bed Occupancy"
             value={`${stats.bedOccupancy}%`}
             description="Current utilization"
             icon={<Bed className="h-5 w-5 text-orange-500" />}
-            trend="-3.1%"
-            trendDirection="down"
+            trend={stats.trends.bedOccupancy}
+            trendDirection={stats.trendDirections.bedOccupancy}
           />
           <StatsCard
             title="Inventory Items"
             value={stats.inventoryItems.toString()}
             description="Items in stock"
             icon={<Pill className="h-5 w-5 text-purple-500" />}
-            trend="+2.4%"
-            trendDirection="up"
+            trend={stats.trends.inventoryItems}
+            trendDirection={stats.trendDirections.inventoryItems}
           />
         </div>
 
