@@ -303,3 +303,10 @@ export const mockPatients: Patient[] = [
   },
 ]
 
+
+export function getPatients() {
+  return mockPatients.map((patient) => ({
+    id: patient.id,
+    name: `${patient.firstName} ${patient.lastName}`,
+  }))
+}

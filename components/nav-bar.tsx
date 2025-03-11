@@ -11,7 +11,12 @@ import {
   LogOut,
   Settings,
   Bell,
-} from 'lucide-react';
+  MoreHorizontal,
+  Users,
+  BedIcon,
+  BarChart3,
+  Package,
+} from "lucide-react"
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,10 +28,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { useAuth } from '@/hooks/use-auth';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 export function NavBar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const router = useRouter();
   const { user, isAuthenticated, isLoading, signOut } = useAuth();
 
@@ -35,13 +42,30 @@ export function NavBar() {
     router.push('/auth/login');
   };
 
-  const navigation = [
+  // Define a common type for navigation items
+  type NavItem = {
+    name: string;
+    href: string;
+    icon?: React.ElementType;
+  };
+
+  const mainNavigation: NavItem[] = [
     { name: 'Dashboard', href: '/dashboard' },
     { name: 'Patients', href: '/patients' },
     { name: 'Appointments', href: '/appointments' },
-    { name: 'Staff', href: '/staff' },
-    { name: 'Reports', href: '/reports' },
   ];
+
+  const moreNavigation: NavItem[] = [
+    { name: "Staff", href: "/staff", icon: Users },
+    { name: "Rooms", href: "/rooms", icon: BedIcon },
+    { name: "Reports", href: "/reports", icon: BarChart3 },
+    { name: "Inventory", href: "/inventory", icon: Package },
+  ]
+
+    // Determine which items to show in the main navigation vs. the "More" dropdown
+  // based on screen size
+  const visibleMainNav = isMobile ? mainNavigation.slice(0, 2) : mainNavigation
+  const hiddenNav = isMobile ? [...mainNavigation.slice(2), ...moreNavigation] : moreNavigation
 
   return (
     <nav className='bg-background border-b'>
@@ -58,7 +82,7 @@ export function NavBar() {
             {/* Desktop navigation */}
             <div className='hidden sm:ml-6 sm:flex sm:space-x-8'>
               {isAuthenticated &&
-                navigation.map((item) => (
+                visibleMainNav.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
@@ -71,6 +95,36 @@ export function NavBar() {
                     {item.name}
                   </Link>
                 ))}
+                {/* More dropdown for desktop */}
+              {isAuthenticated && hiddenNav.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={`inline-flex items-center px-1 pt-1 text-sm font-medium border-transparent text-muted-foreground hover:border-gray-300 hover:text-foreground ${
+                        hiddenNav.some((item) => pathname === item.href)
+                          ? "border-b-2 border-primary text-foreground"
+                          : ""
+                      }`}
+                    >
+                      More
+                      <MoreHorizontal className="ml-1 h-4 w-4" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {hiddenNav.map((item) => (
+                      <DropdownMenuItem key={item.name} asChild>
+                        <Link
+                          href={item.href}
+                          className={`flex w-full items-center ${pathname === item.href ? "bg-muted" : ""}`}
+                        >
+                          {item.icon && <item.icon className="mr-2 h-4 w-4" />}
+                          {item.name}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
             </div>
           </div>
 
@@ -157,17 +211,17 @@ export function NavBar() {
         <div className='sm:hidden' data-testid='mobile-menu'>
           <div className='space-y-1 pb-3 pt-2'>
             {isAuthenticated &&
-              navigation.map((item) => (
+              [...mainNavigation, ...moreNavigation].map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`block px-3 py-2 text-base font-medium ${
+                  className={`flex items-center px-3 py-2 text-base font-medium ${
                     pathname === item.href
                       ? 'bg-primary/10 text-primary'
                       : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                   }`}
                   onClick={() => setMobileMenuOpen(false)}
-                >
+                >                  {item.icon && <item.icon className="mr-2 h-5 w-5" />}
                   {item.name}
                 </Link>
               ))}
