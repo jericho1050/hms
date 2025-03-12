@@ -491,6 +491,58 @@ export type Database = {
       }
     }
     Views: {
+      appointment_dashboard_view: {
+        Row: {
+          created_at: string | null
+          date: string | null
+          dayofweek: number | null
+          department: string | null
+          doctorid: string | null
+          doctorname: string | null
+          endtime: string | null
+          id: string | null
+          iscompleted: boolean | null
+          isnoshow: boolean | null
+          ispending: boolean | null
+          istoday: boolean | null
+          month: number | null
+          notes: string | null
+          patientid: string | null
+          patientname: string | null
+          room_number: string | null
+          starttime: string | null
+          status: string | null
+          type: string | null
+          updated_at: string | null
+          weeknumber: number | null
+          year: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_patient_id_fkey"
+            columns: ["patientid"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_staff_id_fkey"
+            columns: ["doctorid"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_stats: {
+        Row: {
+          completed: number | null
+          noshows: number | null
+          pending: number | null
+          totaltoday: number | null
+        }
+        Relationships: []
+      }
       dashboard_metrics: {
         Row: {
           bed_occupancy_rate: number | null

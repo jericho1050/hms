@@ -90,40 +90,45 @@ export function AppointmentList({ appointments, onStatusChange }: AppointmentLis
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border shadow-sm">
+        <Table className="min-w-full">
           <TableHeader>
-            <TableRow>
-              <TableHead>Date & Time</TableHead>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[140px]">Date & Time</TableHead>
               <TableHead>Patient</TableHead>
               <TableHead>Doctor</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead className="hidden md:table-cell">Department</TableHead>
+              <TableHead className="hidden sm:table-cell">Type</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-right w-[70px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {sortedAppointments.length > 0 ? (
               sortedAppointments.map((appointment) => (
-                <TableRow key={appointment.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{format(parseISO(appointment.date), "MMM d, yyyy")}</span>
-                      <span className="text-sm text-muted-foreground">
-                        {appointment.startTime} - {appointment.endTime}
-                      </span>
+                <TableRow key={appointment.id} className="hover:bg-muted/30">
+                  <TableCell className="py-3">
+                    <div className="flex items-start gap-2">
+                      <div className="flex-shrink-0 w-10 h-10 bg-primary/10 rounded flex items-center justify-center mr-1">
+                        <span className="text-xs font-medium">{format(parseISO(appointment.date), "dd")}</span>
+                      </div>
+                      <div>
+                        <div className="font-medium">{format(parseISO(appointment.date), "MMM d")}</div>
+                        <div className="text-xs text-muted-foreground whitespace-nowrap">
+                          {appointment.startTime} - {appointment.endTime}
+                        </div>
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell>{appointment.patientName}</TableCell>
+                  <TableCell className="font-medium">{appointment.patientName}</TableCell>
                   <TableCell>Dr. {appointment.doctorName}</TableCell>
-                  <TableCell>{appointment.department}</TableCell>
-                  <TableCell>{appointment.type}</TableCell>
+                  <TableCell className="hidden md:table-cell">{appointment.department}</TableCell>
+                  <TableCell className="hidden sm:table-cell">{appointment.type}</TableCell>
                   <TableCell>{getStatusBadge(appointment.status)}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreVertical className="h-4 w-4" />
                           <span className="sr-only">Open menu</span>
                         </Button>

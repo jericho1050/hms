@@ -132,7 +132,7 @@ export function DailySchedule({ appointments, date, onStatusChange }: DailySched
           {Object.entries(timeSlots).length > 0 ? (
             <div className="space-y-4">
               {Object.entries(timeSlots).map(([timeSlot, slotAppointments]) => (
-                <div key={timeSlot} className="grid grid-cols-[100px_1fr] gap-4">
+                <div key={timeSlot} className="grid grid-cols-[80px_1fr] gap-4">
                   <div className="flex items-start">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Clock className="h-4 w-4 text-muted-foreground" />
@@ -158,17 +158,17 @@ export function DailySchedule({ appointments, date, onStatusChange }: DailySched
                             <div className="flex flex-col">
                               <span className="font-medium">{appointment.patientName}</span>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>
+                                <span className="text-[10px] line-clamp-1">
                                   {appointment.startTime} - {appointment.endTime}
                                 </span>
                                 <span>•</span>
-                                <span>{appointment.department}</span>
+                                <span className="text-xs">{appointment.department}</span>
                                 <span>•</span>
-                                <span>Dr. {appointment.doctorName}</span>
+                                <span className="text-xs line-clamp-1">Dr. {appointment.doctorName}</span>
                               </div>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             {getStatusBadge(appointment.status)}
                             <TooltipProvider>
                               <Tooltip>

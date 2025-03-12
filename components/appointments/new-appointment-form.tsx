@@ -233,7 +233,15 @@ export function NewAppointmentForm({ isOpen, onClose, onSubmit, departments, doc
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
-                          disabled={(date) => date < new Date()}
+                          disabled={(date) => {
+                            // Prevent selecting dates in the past
+                            const isPastDate = date < new Date();
+                            
+                            // Prevent selecting weekends (Saturday is 6, Sunday is 0)
+                            const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                            
+                            return isPastDate || isWeekend;
+                          }}
                           initialFocus
                         />
                       </PopoverContent>

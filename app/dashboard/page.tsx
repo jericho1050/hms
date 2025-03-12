@@ -17,7 +17,6 @@ import {
   BarChart4,
   Loader2,
 } from "lucide-react"
-import { supabase } from "@/utils/supabase/client"
 import { StatsCard } from "@/components/ui/stat-card"
 import { usePatientData } from "@/hooks/use-patient"
 import { useStatsData } from "@/hooks/use-stats"
