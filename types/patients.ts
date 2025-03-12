@@ -1,4 +1,7 @@
 export interface Patient {
+    groupNumber: string
+    policyHolderName: string
+    relationshipToPatient: "other" | "self" | "spouse" | "parent"
     id: string
     firstName: string
     lastName: string

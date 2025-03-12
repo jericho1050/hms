@@ -37,21 +37,25 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import type { Patient } from "@/types/patients"
-import { usePatientData } from "@/hooks/use-patient"
 
 interface PatientsTableProps {
   searchQuery: string
   genderFilter: string
+  patients: Patient[]
+  isLoading: boolean
+  updatePatient: (updatedPatient: Patient) => Promise<any>
+  deletePatient: (patientId: string) => Promise<any>
 }
 
-export function PatientsTable({ searchQuery, genderFilter }: PatientsTableProps) {
-  // Use the enhanced hook for patient data management
-  const { 
-    patients, 
-    isLoading, 
-    updatePatient, 
-    deletePatient 
-  } = usePatientData()
+export function PatientsTable({ 
+  searchQuery, 
+  genderFilter,
+  patients,
+  isLoading,
+  updatePatient,
+  deletePatient
+}: PatientsTableProps) {
+
   
   const [filteredPatients, setFilteredPatients] = useState<Patient[]>([])
   const [currentPage, setCurrentPage] = useState(1)

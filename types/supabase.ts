@@ -297,10 +297,13 @@ export type Database = {
           address: string
           allergies: string[] | null
           blood_type: string | null
+          chronic_conditions: string | null
           city: string | null
           created_at: string
+          current_medications: string | null
           date_of_birth: string
           email: string
+          emergency_contact_address: string | null
           emergency_contact_name: string | null
           emergency_contact_phone: string | null
           emergency_contact_relationship: string | null
@@ -313,7 +316,10 @@ export type Database = {
           last_name: string
           marital_status: string | null
           medical_history: Json | null
+          past_surgeries: string | null
           phone: string
+          policy_holder_name: string | null
+          relationship_to_patient: string | null
           state: string | null
           updated_at: string
           zip_code: string | null
@@ -322,10 +328,13 @@ export type Database = {
           address: string
           allergies?: string[] | null
           blood_type?: string | null
+          chronic_conditions?: string | null
           city?: string | null
           created_at?: string
+          current_medications?: string | null
           date_of_birth: string
           email: string
+          emergency_contact_address?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -338,7 +347,10 @@ export type Database = {
           last_name: string
           marital_status?: string | null
           medical_history?: Json | null
+          past_surgeries?: string | null
           phone: string
+          policy_holder_name?: string | null
+          relationship_to_patient?: string | null
           state?: string | null
           updated_at?: string
           zip_code?: string | null
@@ -347,10 +359,13 @@ export type Database = {
           address?: string
           allergies?: string[] | null
           blood_type?: string | null
+          chronic_conditions?: string | null
           city?: string | null
           created_at?: string
+          current_medications?: string | null
           date_of_birth?: string
           email?: string
+          emergency_contact_address?: string | null
           emergency_contact_name?: string | null
           emergency_contact_phone?: string | null
           emergency_contact_relationship?: string | null
@@ -363,7 +378,10 @@ export type Database = {
           last_name?: string
           marital_status?: string | null
           medical_history?: Json | null
+          past_surgeries?: string | null
           phone?: string
+          policy_holder_name?: string | null
+          relationship_to_patient?: string | null
           state?: string | null
           updated_at?: string
           zip_code?: string | null
