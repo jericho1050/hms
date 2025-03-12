@@ -14,3 +14,22 @@ window.ResizeObserver = class ResizeObserver {
 };
 
 
+// Add matchMedia mock for all tests
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(query => ({
+    matches: false,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(), // Deprecated but might be used by some libraries
+    removeListener: vi.fn(), // Deprecated but might be used by some libraries
+    dispatchEvent: vi.fn(),
+  })),
+});
+
+// Set a default innerWidth to avoid undefined issues
+Object.defineProperty(window, 'innerWidth', {
+  writable: true,
+  value: 1024, // Default to desktop size
+});
