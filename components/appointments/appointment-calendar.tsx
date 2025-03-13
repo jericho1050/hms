@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import type { DayClickEventHandler } from "react-day-picker"
+import type { DayClickEventHandler, DayEventHandler } from "react-day-picker"
 import { format, isToday, isSameMonth, isSameDay, parseISO } from "date-fns"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -72,7 +72,7 @@ export function AppointmentCalendar({
     return false;
   };
 
-  const handleDayClick: DayClickEventHandler = (day, modifiers, e) => {
+  const handleDayClick: DayEventHandler<React.MouseEvent<HTMLButtonElement, MouseEvent>> = (day, modifiers, e) => {
     // Only allow selecting days that aren't disabled
     if (!isDateDisabled(day)) {
       onSelect(day);
