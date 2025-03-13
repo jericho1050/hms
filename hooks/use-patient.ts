@@ -1,7 +1,7 @@
+import { PatientFormValues } from './../components/patients/new-patient-form';
 import { useState, useCallback, useEffect } from "react"
 import { supabase } from "@/utils/supabase/client"
 import type { Patient } from "@/types/patients"
-
 // Define the shape of database patient records for type mapping
 interface DbPatient {
   id: string
@@ -132,50 +132,51 @@ export function usePatientData() {
   }, [])
 
   // Create a new patient
-  const createPatient = useCallback(async (patient: Omit<Patient, 'id'>): Promise<PatientOperationResult> => {
+  const createPatient = useCallback(async (patientData: PatientFormValues): Promise<PatientOperationResult> => {
     try {
-      // Create a database-compatible object
-      const patientData = {
-        first_name: patient.firstName,
-        last_name: patient.lastName,
-        date_of_birth: patient.dateOfBirth,
-        gender: patient.gender,
-        marital_status: patient.maritalStatus,
-        address: patient.address,
-        city: patient.city,
-        state: patient.state,
-        zip_code: patient.zipCode,
-        phone: patient.phone,
-        email: patient.email,
-        blood_type: patient.bloodType,
-        allergies: patient.allergies,
-        current_medications: patient.currentMedications,
-        past_surgeries: patient.pastSurgeries,
-        chronic_conditions: patient.chronicConditions,
-        emergency_contact_name: patient.emergencyContactName,
-        emergency_contact_relationship: patient.emergencyContactRelationship,
-        emergency_contact_phone: patient.emergencyContactPhone,
-        insurance_provider: patient.insuranceProvider,
-        insurance_id: patient.insuranceId,
-        insurance_group_number: patient.insuranceGroupNumber,
-        group_number: patient.groupNumber,
-        policy_holder_name: patient.policyHolderName,
-        relationship_to_patient: patient.relationshipToPatient
-      }
-      
+      // Map form fields to database fields, ensuring required fields are present
+      const dbPatient = {
+        // Required fields
+        first_name: patientData.firstName,
+        last_name: patientData.lastName,
+        date_of_birth: patientData.dateOfBirth,
+        gender: patientData.gender,
+        address: patientData.address,
+        phone: patientData.phone,
+        email: patientData.email,
+
+        // Optional fields
+        marital_status: patientData.maritalStatus || null,
+        city: patientData.city || null,
+        state: patientData.state || null,
+        zip_code: patientData.zipCode || null,
+        blood_type: patientData.bloodType === 'unknown' ? null : patientData.bloodType,
+        allergies: patientData.hasAllergies ? patientData.allergies : null,
+        current_medications: patientData.currentMedications || null,
+        past_surgeries: patientData.pastSurgeries || null,
+        chronic_conditions: patientData.chronicConditions || null,
+        
+        // Emergency contact fields
+        emergency_contact_name: patientData.contactName || null,
+        emergency_contact_relationship: patientData.relationship || null,
+        emergency_contact_phone: patientData.contactPhone || null,
+        emergency_contact_address: patientData.contactAddress || null,
+
+        // Insurance fields (only if hasInsurance is true)
+        insurance_provider: patientData.hasInsurance ? patientData.insuranceProvider : null,
+        insurance_id: patientData.hasInsurance ? patientData.insuranceId : null,
+        insurance_group_number: patientData.hasInsurance ? patientData.groupNumber : null,
+        policy_holder_name: patientData.hasInsurance ? patientData.policyHolderName : null,
+        relationship_to_patient: patientData.hasInsurance ? patientData.relationshipToPatient : null,
+      };
+
       const { data, error } = await supabase
         .from('patients')
-        .insert(patientData)
-        .single()
-      
-      if (error) throw error
-      
-      // Optimistically update UI (the real-time subscription will sync eventually)
-      if (data) {
-        const newPatient = mapDbPatientToPatient(data)
-        setPatients(prev => [newPatient, ...prev])
-      }
-      
+        .insert(dbPatient)
+        .select();
+
+      if (error) throw error;
+
       return { success: true }
     } catch (err) {
       console.error("Error creating patient:", err)
