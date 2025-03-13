@@ -242,7 +242,7 @@ export function NewAppointmentForm({ isOpen, onClose, onSubmit, departments, doc
                             
                             return isPastDate || isWeekend;
                           }}
-                          initialFocus
+                        autoFocus
                         />
                       </PopoverContent>
                     </Popover>

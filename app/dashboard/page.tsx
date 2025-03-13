@@ -21,6 +21,18 @@ import { StatsCard } from "@/components/ui/stat-card"
 import { usePatientData } from "@/hooks/use-patient"
 import { useStatsData } from "@/hooks/use-stats"
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime"
+import { ChartContainer } from '@/components/ui/chart';
+import * as RechartsPrimitive from 'recharts';
+
+const data = [
+  { name: 'Page A', uv: 4000, pv: 2400, amt: 2400 },
+  { name: 'Page B', uv: 3000, pv: 1398, amt: 2210 },
+  { name: 'Page C', uv: 2000, pv: 9800, amt: 2290 },
+  { name: 'Page D', uv: 2780, pv: 3908, amt: 2000 },
+  { name: 'Page E', uv: 1890, pv: 4800, amt: 2181 },
+  { name: 'Page F', uv: 2390, pv: 3800, amt: 2500 },
+  { name: 'Page G', uv: 3490, pv: 4300, amt: 2100 },
+];
 
 export default function Dashboard() {
   // Load patient data with custom hook
@@ -145,10 +157,17 @@ export default function Dashboard() {
                   <CardDescription>Patient admissions over the last 30 days</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[200px] w-full flex items-center justify-center bg-muted/20 rounded-md">
-                    <BarChart4 className="h-16 w-16 text-muted" />
-                    <span className="ml-2 text-muted">Chart Placeholder</span>
-                  </div>
+                  <ChartContainer config={{ /* your chart config here */ }}>
+                    <RechartsPrimitive.LineChart data={data}>
+                      <RechartsPrimitive.XAxis dataKey="name" />
+                      <RechartsPrimitive.YAxis />
+                      <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                      <RechartsPrimitive.Tooltip />
+                      <RechartsPrimitive.Legend />
+                      <RechartsPrimitive.Line type="monotone" dataKey="pv" stroke="#8884d8" />
+                      <RechartsPrimitive.Line type="monotone" dataKey="uv" stroke="#82ca9d" />
+                    </RechartsPrimitive.LineChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
               <Card className="lg:col-span-3">
@@ -157,10 +176,17 @@ export default function Dashboard() {
                   <CardDescription>Current department capacity usage</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-[200px] w-full flex items-center justify-center bg-muted/20 rounded-md">
-                    <Activity className="h-16 w-16 text-muted" />
-                    <span className="ml-2 text-muted">Chart Placeholder</span>
-                  </div>
+                  <ChartContainer config={{ /* your chart config here */ }}>
+                    <RechartsPrimitive.LineChart data={data}>
+                      <RechartsPrimitive.XAxis dataKey="name" />
+                      <RechartsPrimitive.YAxis />
+                      <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                      <RechartsPrimitive.Tooltip />
+                      <RechartsPrimitive.Legend />
+                      <RechartsPrimitive.Line type="monotone" dataKey="pv" stroke="#8884d8" />
+                      <RechartsPrimitive.Line type="monotone" dataKey="uv" stroke="#82ca9d" />
+                    </RechartsPrimitive.LineChart>
+                  </ChartContainer>
                 </CardContent>
               </Card>
             </div>
@@ -169,27 +195,72 @@ export default function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Patients</CardTitle>
-                <CardDescription>Recently admitted or registered patients</CardDescription>
+                <CardDescription>Patient demographics and distribution</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-md">
-                  <Users className="h-16 w-16 text-muted" />
-                  <span className="ml-2 text-muted">Patient Data Placeholder</span>
-                </div>
+                <ChartContainer config={{ 
+                  "male": { color: "#3b82f6" }, 
+                  "female": { color: "#ec4899" },
+                  "other": { color: "#a855f7" }
+                }}>
+                  <RechartsPrimitive.BarChart data={data}>
+                    <RechartsPrimitive.XAxis dataKey="name" />
+                    <RechartsPrimitive.YAxis />
+                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                    <RechartsPrimitive.Tooltip />
+                    <RechartsPrimitive.Legend />
+                    <RechartsPrimitive.Bar dataKey="pv" name="Male" fill="#3b82f6" />
+                    <RechartsPrimitive.Bar dataKey="uv" name="Female" fill="#ec4899" />
+                  </RechartsPrimitive.BarChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="appointments">
             <Card>
               <CardHeader>
-                <CardTitle>Upcoming Appointments</CardTitle>
-                <CardDescription>Scheduled appointments for the next 7 days</CardDescription>
+                <CardTitle>Appointment Distribution</CardTitle>
+                <CardDescription>Distribution by department and type</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-md">
-                  <Calendar className="h-16 w-16 text-muted" />
-                  <span className="ml-2 text-muted">Appointment Data Placeholder</span>
-                </div>
+                <ChartContainer config={{
+                  "emergency": { color: "#ef4444" },
+                  "scheduled": { color: "#3b82f6" },
+                  "followup": { color: "#22c55e" },
+                  "consultation": { color: "#f59e0b" }
+                }}>
+                  <RechartsPrimitive.PieChart>
+                    <RechartsPrimitive.Pie
+                      data={[
+                        { name: 'Emergency', value: 400 },
+                        { name: 'Scheduled', value: 300 },
+                        { name: 'Follow-up', value: 300 },
+                        { name: 'Consultation', value: 200 }
+                      ]}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      nameKey="name"
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {
+                        [
+                          { name: 'Emergency', fill: '#ef4444' },
+                          { name: 'Scheduled', fill: '#3b82f6' },
+                          { name: 'Follow-up', fill: '#22c55e' },
+                          { name: 'Consultation', fill: '#f59e0b' }
+                        ].map((entry, index) => (
+                          <RechartsPrimitive.Cell key={`cell-${index}`} fill={entry.fill} />
+                        ))
+                      }
+                    </RechartsPrimitive.Pie>
+                    <RechartsPrimitive.Tooltip />
+                    <RechartsPrimitive.Legend />
+                  </RechartsPrimitive.PieChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </TabsContent>
@@ -200,10 +271,30 @@ export default function Dashboard() {
                 <CardDescription>Revenue and expenses for the current period</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-[400px] w-full flex items-center justify-center bg-muted/20 rounded-md">
-                  <DollarSign className="h-16 w-16 text-muted" />
-                  <span className="ml-2 text-muted">Financial Data Placeholder</span>
-                </div>
+                <ChartContainer config={{
+                  "revenue": { color: "#22c55e" },
+                  "expenses": { color: "#ef4444" },
+                  "profit": { color: "#3b82f6" }
+                }}>
+                  <RechartsPrimitive.AreaChart data={[
+                    { month: 'Jan', revenue: 4000, expenses: 2400, profit: 1600 },
+                    { month: 'Feb', revenue: 3000, expenses: 1398, profit: 1602 },
+                    { month: 'Mar', revenue: 2000, expenses: 1800, profit: 200 },
+                    { month: 'Apr', revenue: 2780, expenses: 1908, profit: 872 },
+                    { month: 'May', revenue: 1890, expenses: 1800, profit: 90 },
+                    { month: 'Jun', revenue: 2390, expenses: 1800, profit: 590 },
+                    { month: 'Jul', revenue: 3490, expenses: 2300, profit: 1190 }
+                  ]}>
+                    <RechartsPrimitive.XAxis dataKey="month" />
+                    <RechartsPrimitive.YAxis />
+                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
+                    <RechartsPrimitive.Tooltip />
+                    <RechartsPrimitive.Legend />
+                    <RechartsPrimitive.Area type="monotone" dataKey="revenue" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
+                    <RechartsPrimitive.Area type="monotone" dataKey="expenses" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
+                    <RechartsPrimitive.Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
+                  </RechartsPrimitive.AreaChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           </TabsContent>
