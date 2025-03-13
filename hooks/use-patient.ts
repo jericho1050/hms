@@ -56,7 +56,10 @@ export const mapDbPatientToPatient = (dbRecord: any): Patient => {
     emergencyContactPhone: dbRecord.emergency_contact_phone,
     insuranceProvider: dbRecord.insurance_provider,
     insuranceId: dbRecord.insurance_id,
-    insuranceGroupNumber: dbRecord.insurance_group_number
+    insuranceGroupNumber: dbRecord.insurance_group_number,
+    groupNumber: dbRecord.groupNumber,
+    policyHolderName: dbRecord.policyHolderName,
+    relationshipToPatient: dbRecord.relationshipToPatient
   }
 }
 
@@ -154,13 +157,15 @@ export function usePatientData() {
         emergency_contact_phone: patient.emergencyContactPhone,
         insurance_provider: patient.insuranceProvider,
         insurance_id: patient.insuranceId,
-        insurance_group_number: patient.insuranceGroupNumber
+        insurance_group_number: patient.insuranceGroupNumber,
+        group_number: patient.groupNumber,
+        policy_holder_name: patient.policyHolderName,
+        relationship_to_patient: patient.relationshipToPatient
       }
       
       const { data, error } = await supabase
         .from('patients')
         .insert(patientData)
-        .select('*')
         .single()
       
       if (error) throw error

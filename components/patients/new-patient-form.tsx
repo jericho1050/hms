@@ -85,13 +85,12 @@ const medicalHistorySchema = z.object({
 });
 
 const emergencyContactSchema = z.object({
-  contactName: z.string().min(2, 'Contact name must be at least 2 characters').optional(),
-  relationship: z.string().min(2, 'Relationship must be at least 2 characters').optional(),
+  contactName: z.string().min(2, 'Contact name must be at least 2 characters'),
+  relationship: z.string().min(2, 'Relationship must be at least 2 characters'),
   contactPhone: z
     .string()
-    .min(10, 'Phone number must be at least 10 characters')
-    .optional(),
-  contactAddress: z.string().optional(),
+    .min(10, 'Phone number must be at least 10 characters'),
+  contactAddress: z.string().min(5, 'Address must be at least 5 characters'),
 });
 
 const insuranceInfoSchema = z.object({
@@ -218,15 +217,12 @@ export function NewPatientForm({
         ]);
         break;
       case 4:
-        // Since emergency contact fields are now optional, we can simply proceed
-        // We'll still trigger validation just to ensure any entered data is valid
-        await form.trigger([
+        isValid = await form.trigger([
           'contactName',
           'relationship',
           'contactPhone',
+          'contactAddress',
         ]);
-        // Always allow to proceed since these fields are optional
-        isValid = true;
         break;
       case 5:
         isValid = await form.trigger([
@@ -605,7 +601,7 @@ export function NewPatientForm({
               name='contactName'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Emergency Contact Name (Optional)</FormLabel>
+                  <FormLabel>Emergency Contact Name</FormLabel>
                   <FormControl>
                     <Input placeholder='Jane Doe' {...field} />
                   </FormControl>
@@ -620,7 +616,7 @@ export function NewPatientForm({
               name='relationship'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Relationship to Patient (Optional)</FormLabel>
+                  <FormLabel>Relationship to Patient</FormLabel>
                   <FormControl>
                     <Input placeholder='Spouse, Parent, etc.' {...field} />
                   </FormControl>
@@ -635,7 +631,7 @@ export function NewPatientForm({
               name='contactPhone'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Emergency Contact Phone (Optional)</FormLabel>
+                  <FormLabel>Emergency Contact Phone</FormLabel>
                   <FormControl>
                     <Input placeholder='(555) 123-4567' {...field} />
                   </FormControl>
@@ -650,7 +646,7 @@ export function NewPatientForm({
               name='contactAddress'
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Emergency Contact Address (Optional)</FormLabel>
+                  <FormLabel>Emergency Contact Address</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder='Full address'
