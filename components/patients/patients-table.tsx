@@ -41,6 +41,7 @@ import type { Patient } from "@/types/patients"
 interface PatientsTableProps {
   searchQuery: string
   genderFilter: string
+  statusFilter: string
   patients: Patient[]
   isLoading: boolean
   updatePatient: (updatedPatient: Patient) => Promise<any>
@@ -50,6 +51,7 @@ interface PatientsTableProps {
 export function PatientsTable({ 
   searchQuery, 
   genderFilter,
+  statusFilter,
   patients,
   isLoading,
   updatePatient,
@@ -68,7 +70,7 @@ export function PatientsTable({
   const patientsPerPage = 10
   const totalPages = Math.ceil(filteredPatients.length / patientsPerPage)
 
-  // Filter patients based on search query and gender filter
+  // Filter patients based on search query, gender filter, and status filter
   useEffect(() => {
     let filtered = [...patients]
 
@@ -87,9 +89,13 @@ export function PatientsTable({
       filtered = filtered.filter((patient) => patient.gender.toLowerCase() === genderFilter)
     }
 
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((patient) => patient.status === statusFilter)
+    }
+
     setFilteredPatients(filtered)
     setCurrentPage(1) // Reset to first page when filters change
-  }, [patients, searchQuery, genderFilter])
+  }, [patients, searchQuery, genderFilter, statusFilter])
 
   // Get current page patients
   const currentPatients = filteredPatients.slice(
@@ -165,18 +171,18 @@ export function PatientsTable({
       setIsEditModalOpen(false)
     }
   }
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[100px]">ID</TableHead>
+              {/* <TableHead className="w-[100px]">ID</TableHead> */}
               <TableHead>Name</TableHead>
               <TableHead>Date of Birth</TableHead>
               <TableHead>Gender</TableHead>
               <TableHead>Contact</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Insurance</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -193,7 +199,7 @@ export function PatientsTable({
             ) : currentPatients.length > 0 ? (
               currentPatients.map((patient) => (
                 <TableRow key={patient.id}>
-                  <TableCell className="font-medium">{patient.id}</TableCell>
+                  {/* <TableCell className="font-medium">{patient.id}</TableCell> */}
                   <TableCell>{`${patient.firstName} ${patient.lastName}`}</TableCell>
                   <TableCell>{new Date(patient.dateOfBirth).toLocaleDateString()}</TableCell>
                   <TableCell>
@@ -206,6 +212,12 @@ export function PatientsTable({
                       <span className="text-sm">{patient.phone}</span>
                       <span className="text-xs text-muted-foreground">{patient.email}</span>
                     </div>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Badge variant={patient.status === "Admitted" ? "admitted" : patient.status === "Discharged" ? "discharged" : "outpatient"} className="capitalize">
+                      {patient.status}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     {patient.insuranceProvider ? (

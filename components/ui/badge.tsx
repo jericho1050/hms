@@ -15,6 +15,9 @@ const badgeVariants = cva(
         destructive:
           "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
         outline: "text-foreground",
+        admitted: "border-blue-500 text-blue-500",
+        outpatient: "border-yellow-500 text-yellow-500",
+        discharged: "border-green-500 text-green-500"
       },
     },
     defaultVariants: {

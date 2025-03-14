@@ -54,6 +54,7 @@ const personalDetailsSchema = z.object({
     .refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
   gender: z.enum(['male', 'female', 'other']),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']),
+  status: z.enum(['Admitted', 'Discharged', 'Outpatient']),
 });
 
 const contactInfoSchema = z.object({
@@ -138,6 +139,7 @@ export function NewPatientForm({
       dateOfBirth: '',
       gender: 'male',
       maritalStatus: 'single',
+      status: 'Admitted',
       address: '',
       city: '',
       state: '',
@@ -195,6 +197,7 @@ export function NewPatientForm({
           'dateOfBirth',
           'gender',
           'maritalStatus',
+          'status',
         ]);
         break;
       case 2:
@@ -347,6 +350,30 @@ export function NewPatientForm({
                       <SelectItem value='married'>Married</SelectItem>
                       <SelectItem value='divorced'>Divorced</SelectItem>
                       <SelectItem value='widowed'>Widowed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              key='step1-status'
+              control={form.control}
+              name='status'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Patient Status</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder='Select patient status' />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value='Admitted'>Admitted</SelectItem>
+                      <SelectItem value='Discharged'>Discharged</SelectItem>
+                      <SelectItem value='Outpatient'>Outpatient</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -826,6 +853,10 @@ export function NewPatientForm({
                     <p>
                       <span className='font-medium'>Marital Status:</span>{' '}
                       {form.getValues('maritalStatus')}
+                    </p>
+                    <p>
+                      <span className='font-medium'>Patient Status:</span>{' '}
+                      {form.getValues('status')}
                     </p>
                   </div>
                 </div>

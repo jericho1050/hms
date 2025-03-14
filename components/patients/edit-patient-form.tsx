@@ -45,6 +45,7 @@ const patientFormSchema = z.object({
     .refine((date) => !isNaN(Date.parse(date)), 'Invalid date format'),
   gender: z.enum(['male', 'female', 'other']),
   maritalStatus: z.enum(['single', 'married', 'divorced', 'widowed']),
+  status: z.enum(['Admitted', 'Discharged', 'Outpatient']),
   address: z.string().min(5, 'Address must be at least 5 characters'),
   city: z.string().min(2, 'City must be at least 2 characters'),
   state: z.string().min(2, 'State must be at least 2 characters'),
@@ -120,6 +121,7 @@ export function EditPatientForm({
         | 'married'
         | 'divorced'
         | 'widowed',
+      status: patient.status as 'Admitted' | 'Discharged' | 'Outpatient',
       address: patient.address,
       city: patient.city,
       state: patient.state,
@@ -172,6 +174,7 @@ export function EditPatientForm({
           | 'married'
           | 'divorced'
           | 'widowed',
+        status: patient.status as 'Admitted' | 'Discharged' | 'Outpatient',
         address: patient.address,
         city: patient.city,
         state: patient.state,
@@ -224,6 +227,7 @@ export function EditPatientForm({
           'dateOfBirth',
           'gender',
           'maritalStatus',
+          'status',
         ]);
       case 'contact':
         return await form.trigger([
@@ -293,6 +297,7 @@ export function EditPatientForm({
           'dateOfBirth',
           'gender',
           'maritalStatus',
+          'status',
         ]);
         if (!personalValid) {
           setActiveTab('personal');
@@ -482,6 +487,32 @@ export function EditPatientForm({
                     )}
                   />
                 </div>
+                
+                <FormField
+                  control={form.control}
+                  name='status'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Patient Status</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder='Select patient status' />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value='Admitted'>Admitted</SelectItem>
+                          <SelectItem value='Discharged'>Discharged</SelectItem>
+                          <SelectItem value='Outpatient'>Outpatient</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </TabsContent>
 
               <TabsContent value='contact' className='space-y-4'>

@@ -24,6 +24,7 @@ export default function PatientsPage() {
   const [isNewPatientModalOpen, setIsNewPatientModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [genderFilter, setGenderFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
   const { toast } = useToast();
   const {
     patients,
@@ -114,7 +115,7 @@ export default function PatientsPage() {
           <div className='flex items-center gap-2'>
             <Filter className='h-4 w-4 text-muted-foreground' />
             <Select value={genderFilter} onValueChange={setGenderFilter}>
-              <SelectTrigger className='w-[180px]'>
+              <SelectTrigger className='w-[150px]'>
                 <SelectValue placeholder='Filter by gender' />
               </SelectTrigger>
               <SelectContent>
@@ -122,6 +123,20 @@ export default function PatientsPage() {
                 <SelectItem value='male'>Male</SelectItem>
                 <SelectItem value='female'>Female</SelectItem>
                 <SelectItem value='other'>Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className='flex items-center gap-2'>
+            <Filter className='h-4 w-4 text-muted-foreground' />
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className='w-[150px]'>
+                <SelectValue placeholder='Filter by status' />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value='all'>All Statuses</SelectItem>
+                <SelectItem value='Admitted'>Admitted</SelectItem>
+                <SelectItem value='Discharged'>Discharged</SelectItem>
+                <SelectItem value='Outpatient'>Outpatient</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -141,6 +156,7 @@ export default function PatientsPage() {
       <PatientsTable
         searchQuery={searchQuery}
         genderFilter={genderFilter}
+        statusFilter={statusFilter}
         patients={patients}
         isLoading={isLoading}
         updatePatient={updatePatient}
