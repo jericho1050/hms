@@ -189,6 +189,8 @@ CREATE TABLE public.patients (
   policy_holder_name text NULL,
   relationship_to_patient text NULL,
   emergency_contact_address text NULL,
+  status text NOT NULL DEFAULT 'Admitted'
+   CONSTRAINT check_patient_status CHECK (status IN ('Admitted', 'Discharged', 'Outpatient'));
   CONSTRAINT patients_pkey PRIMARY KEY (id),
   CONSTRAINT check_relationship_to_patient CHECK (((relationship_to_patient IS NULL) OR (relationship_to_patient = ANY (ARRAY['self'::text, 'spouse'::text, 'parent'::text, 'other'::text]))))
 ) TABLESPACE pg_default;

@@ -101,6 +101,7 @@ export function usePatientData() {
   const [patients, setPatients] = useState<Patient[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<any>(null)
+  const [patientAdmissionsData, setPatientAdmissionsData] = useState<{ date: string; admissions: number }[]>([])
 
   // Fetch patients data from Supabase
   const fetchPatients = useCallback(async (): Promise<PatientOperationResult> => {
@@ -128,6 +129,62 @@ export function usePatientData() {
       return { error: err }
     } finally {
       setIsLoading(false)
+    }
+  }, [])
+
+  // Fetch patient admissions for the last 30 days
+  const fetchPatientAdmissions = useCallback(async (): Promise<{ date: string; admissions: number }[]> => {
+    try {
+      // Calculate date range for last 30 days
+      const endDate = new Date()
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - 29)
+      
+      // Format dates for Supabase query
+      const startDateStr = startDate.toISOString()
+      const endDateStr = endDate.toISOString()
+      
+      // Fetch patients created in the last 30 days
+      const { data, error } = await supabase
+        .from('patients')
+        .select('created_at')
+        .gte('created_at', startDateStr)
+        .lte('created_at', endDateStr)
+        .order('created_at')
+      
+      if (error) throw error
+      
+      // Create a map of dates to count admissions per day
+      const admissionsMap = new Map<string, number>()
+      
+      // Initialize all dates in the range with 0 admissions
+      for (let i = 0; i < 30; i++) {
+        const date = new Date(startDate)
+        date.setDate(startDate.getDate() + i)
+        const dateStr = date.toISOString().split('T')[0]
+        admissionsMap.set(dateStr, 0)
+      }
+      
+      // Count admissions for each day
+      if (data) {
+        data.forEach(patient => {
+          const admissionDate = new Date(patient.created_at).toISOString().split('T')[0]
+          const currentCount = admissionsMap.get(admissionDate) || 0
+          admissionsMap.set(admissionDate, currentCount + 1)
+        })
+      }
+      
+      // Convert map to array for chart data
+      const chartData = Array.from(admissionsMap, ([date, admissions]) => ({
+        date,
+        admissions
+      })).sort((a, b) => a.date.localeCompare(b.date))
+      
+      setPatientAdmissionsData(chartData)
+      return chartData
+    } catch (err) {
+      console.error("Error fetching patient admissions:", err)
+      return []
     }
   }, [])
 
@@ -255,6 +312,7 @@ export function usePatientData() {
   useEffect(() => {
     // Initial data fetch
     fetchPatients()
+    fetchPatientAdmissions()
 
     // Set up real-time subscription
     const channel = supabase
@@ -268,13 +326,15 @@ export function usePatientData() {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [fetchPatients, handlePatientChange])
+  }, [fetchPatients, fetchPatientAdmissions, handlePatientChange])
 
   return {
     patients,
     isLoading,
     error,
+    patientAdmissionsData,
     fetchPatients,
+    fetchPatientAdmissions,
     createPatient,
     updatePatient,
     deletePatient,
