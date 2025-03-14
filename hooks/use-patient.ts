@@ -27,6 +27,7 @@ interface DbPatient {
   insurance_provider: string | null
   insurance_id: string | null
   insurance_group_number: string | null
+  status: string
   created_at?: string
   [key: string]: any // Allow additional fields for flexibility
 }
@@ -59,7 +60,8 @@ export const mapDbPatientToPatient = (dbRecord: any): Patient => {
     insuranceGroupNumber: dbRecord.insurance_group_number,
     groupNumber: dbRecord.groupNumber,
     policyHolderName: dbRecord.policyHolderName,
-    relationshipToPatient: dbRecord.relationshipToPatient
+    relationshipToPatient: dbRecord.relationshipToPatient,
+    status: dbRecord.status || "Admitted" // Add the status field with a default fallback
   }
 }
 
@@ -88,7 +90,8 @@ export const mapPatientToDbPatient = (patient: Patient): Omit<DbPatient, 'create
     emergency_contact_phone: patient.emergencyContactPhone,
     insurance_provider: patient.insuranceProvider,
     insurance_id: patient.insuranceId,
-    insurance_group_number: patient.insuranceGroupNumber
+    insurance_group_number: patient.insuranceGroupNumber,
+    status: patient.status
   }
 }
 
@@ -225,6 +228,9 @@ export function usePatientData() {
         insurance_group_number: patientData.hasInsurance ? patientData.groupNumber : null,
         policy_holder_name: patientData.hasInsurance ? patientData.policyHolderName : null,
         relationship_to_patient: patientData.hasInsurance ? patientData.relationshipToPatient : null,
+        
+        // Status field
+        status: patientData.status || 'Admitted',
       };
 
       const { data, error } = await supabase

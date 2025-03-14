@@ -25,6 +25,7 @@ export interface Patient {
     insuranceProvider: string | null
     insuranceId: string | null
     insuranceGroupNumber: string | null
+    status: "Admitted" | "Discharged" | "Outpatient"
   }
   
   
