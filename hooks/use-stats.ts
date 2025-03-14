@@ -35,6 +35,8 @@ export function useStatsData() {
     }
   })
 
+  const [departmentUtilizationData, setDepartmentUtilizationData] = useState<{ department: string; capacity: number }[]>([])
+
   // Fetch dashboard metrics using the view
   const fetchDashboardMetrics = useCallback(async () => {
     try {
@@ -61,6 +63,151 @@ export function useStatsData() {
       }
     } catch (error) {
       console.error("Error in fetchDashboardMetrics:", error)
+    }
+  }, [])
+
+  // Helper function to calculate percentage change
+  const calculatePercentageChange = (previous: number, current: number): number => {
+    if (previous === 0) return 0
+    return ((current - previous) / previous) * 100
+  }
+
+  // Keep these individual fetch functions for real-time updates
+  const fetchMedicalRecordsCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('medical_records')
+      .select('*', { count: 'exact', head: true })
+      
+    if (!error && count !== null) {
+      setStats(prev => ({ ...prev, medicalRecordsCount: count }))
+    } else if (error) {
+      console.error("Error fetching medical records count:", error)
+      setStats(prev => ({ ...prev, medicalRecordsCount: 0 }))
+    }
+  }, [])
+
+  const fetchBillingCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('billing')
+      .select('*', { count: 'exact', head: true })
+      
+    if (!error && count !== null) {
+      setStats(prev => ({ ...prev, billingCount: count }))
+    } else if (error) {
+      console.error("Error fetching billing count:", error)
+      setStats(prev => ({ ...prev, billingCount: 0 }))
+    }
+  }, [])
+
+  const fetchDepartmentsCount = useCallback(async () => {
+    const { count, error } = await supabase
+      .from('departments')
+      .select('*', { count: 'exact', head: true })
+      
+    if (!error && count !== null) {
+      setStats(prev => ({ ...prev, departmentsCount: count }))
+    } else if (error) {
+      console.error("Error fetching departments count:", error)
+      setStats(prev => ({ ...prev, departmentsCount: 0 }))
+    }
+  }, [])
+
+  const fetchRoomsData = useCallback(async () => {
+    // Get total rooms count
+    const { count: totalCount, error: totalError } = await supabase
+      .from('rooms')
+      .select('*', { count: 'exact', head: true })
+      
+    // Get occupied rooms count
+    const { count: occupiedCount, error: occupiedError } = await supabase
+      .from('rooms')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'occupied')
+      
+    if (!totalError && totalCount !== null) {
+      setStats(prev => ({ ...prev, roomsTotal: totalCount }))
+      
+      if (!occupiedError && occupiedCount !== null) {
+        const availableRooms = totalCount - occupiedCount
+        
+        setStats(prev => ({ 
+          ...prev, 
+          roomsAvailable: availableRooms
+        }))
+      }
+    } else {
+      console.error("Error fetching rooms data:", totalError || occupiedError)
+      setStats(prev => ({ ...prev, roomsTotal: 0, roomsAvailable: 0 }))
+    }
+  }, [])
+
+  // Fetch department utilization data
+  const fetchDepartmentUtilization = useCallback(async () => {
+    try {
+      // Fetch departments
+      const { data: departments, error: deptError } = await supabase
+        .from('departments')
+        .select('id, name')
+      
+      if (deptError) {
+        console.error("Error fetching departments:", deptError)
+        return
+      }
+      
+      if (!departments || departments.length === 0) {
+        return
+      }
+      
+      // Create initial data structure with 0 capacity
+      const utilizationData: { department: string; capacity: number }[] = departments.map(dept => ({
+        department: dept.name,
+        capacity: 0
+      }))
+      
+      // For each department, calculate bed occupancy
+      for (const dept of departments) {
+        // Get rooms for this department
+        const { data: rooms, error: roomsError } = await supabase
+          .from('rooms')
+          .select('*')
+          .eq('department_id', dept.id)
+        
+        if (roomsError) {
+          console.error(`Error fetching rooms for department ${dept.name}:`, roomsError)
+          continue
+        }
+        
+        if (!rooms || rooms.length === 0) {
+          continue
+        }
+        
+        // Calculate occupancy percentage for department based on room status
+        const totalBeds = rooms.reduce((total, room) => {
+          // Use the capacity property from the rooms table
+          return total + room.capacity
+        }, 0)
+        
+        const occupiedBeds = rooms.reduce((total, room) => {
+          // Use the current_occupancy property from the rooms table
+          return total + room.current_occupancy
+        }, 0)
+        
+        const capacityPercentage = totalBeds > 0 
+          ? Math.round((occupiedBeds / totalBeds) * 100) 
+          : 0
+        
+        // Update the utilization data for this department
+        const deptIndex = utilizationData.findIndex(d => d.department === dept.name)
+        if (deptIndex >= 0) {
+          utilizationData[deptIndex].capacity = capacityPercentage
+        }
+      }
+      
+      setDepartmentUtilizationData(utilizationData)
+      return utilizationData
+    } catch (error) {
+      console.error("Error fetching department utilization:", error)
+      return []
     }
   }, [])
 
@@ -147,12 +294,6 @@ export function useStatsData() {
       console.error("Error calculating trends:", error)
     }
   }, [stats.patientCount, stats.revenueThisMonth])
-  
-  // Helper function to calculate percentage change
-  const calculatePercentageChange = (previous: number, current: number): number => {
-    if (previous === 0) return 0
-    return ((current - previous) / previous) * 100
-  }
 
   // Fetch all dashboard data
   const fetchDashboardData = useCallback(async () => {
@@ -166,6 +307,7 @@ export function useStatsData() {
         fetchBillingCount(),
         fetchDepartmentsCount(),
         fetchRoomsData(),
+        fetchDepartmentUtilization(),
       ])
       
       // Calculate trends after fetching current data
@@ -175,85 +317,18 @@ export function useStatsData() {
     } finally {
       setLoading(false)
     }
-  }, [fetchDashboardMetrics, calculateTrends])
-
-  // Keep these individual fetch functions for real-time updates
-  const fetchMedicalRecordsCount = useCallback(async () => {
-    const { count, error } = await supabase
-      .from('medical_records')
-      .select('*', { count: 'exact', head: true })
-      
-    if (!error && count !== null) {
-      setStats(prev => ({ ...prev, medicalRecordsCount: count }))
-    } else if (error) {
-      console.error("Error fetching medical records count:", error)
-      setStats(prev => ({ ...prev, medicalRecordsCount: 0 }))
-    }
-  }, [])
-
-  const fetchBillingCount = useCallback(async () => {
-    const { count, error } = await supabase
-      .from('billing')
-      .select('*', { count: 'exact', head: true })
-      
-    if (!error && count !== null) {
-      setStats(prev => ({ ...prev, billingCount: count }))
-    } else if (error) {
-      console.error("Error fetching billing count:", error)
-      setStats(prev => ({ ...prev, billingCount: 0 }))
-    }
-  }, [])
-
-  const fetchDepartmentsCount = useCallback(async () => {
-    const { count, error } = await supabase
-      .from('departments')
-      .select('*', { count: 'exact', head: true })
-      
-    if (!error && count !== null) {
-      setStats(prev => ({ ...prev, departmentsCount: count }))
-    } else if (error) {
-      console.error("Error fetching departments count:", error)
-      setStats(prev => ({ ...prev, departmentsCount: 0 }))
-    }
-  }, [])
-
-  const fetchRoomsData = useCallback(async () => {
-    // Get total rooms count
-    const { count: totalCount, error: totalError } = await supabase
-      .from('rooms')
-      .select('*', { count: 'exact', head: true })
-      
-    // Get occupied rooms count
-    const { count: occupiedCount, error: occupiedError } = await supabase
-      .from('rooms')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'occupied')
-      
-    if (!totalError && totalCount !== null) {
-      setStats(prev => ({ ...prev, roomsTotal: totalCount }))
-      
-      if (!occupiedError && occupiedCount !== null) {
-        const availableRooms = totalCount - occupiedCount
-        
-        setStats(prev => ({ 
-          ...prev, 
-          roomsAvailable: availableRooms
-        }))
-      }
-    } else {
-      console.error("Error fetching rooms data:", totalError || occupiedError)
-      setStats(prev => ({ ...prev, roomsTotal: 0, roomsAvailable: 0 }))
-    }
-  }, [])
+  }, [fetchDashboardMetrics, calculateTrends, fetchMedicalRecordsCount, fetchBillingCount, fetchDepartmentsCount, fetchRoomsData, fetchDepartmentUtilization])
 
   return {
     loading,
     stats,
+    departmentUtilizationData,
     fetchDashboardData,
     fetchDashboardMetrics,
     fetchMedicalRecordsCount,
     fetchBillingCount,
     fetchDepartmentsCount,
-    fetchRoomsData
+    fetchRoomsData,
+    fetchDepartmentUtilization,
   }
 }

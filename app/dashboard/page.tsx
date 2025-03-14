@@ -5,49 +5,40 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  Users,
-  Calendar,
-  Activity,
-  DollarSign,
-  Bed,
-  HeartPulse,
-  Pill,
-  TrendingUp,
-  BarChart4,
-  Loader2,
-} from "lucide-react"
 import { StatsCard } from "@/components/ui/stat-card"
 import { usePatientData } from "@/hooks/use-patient"
 import { useStatsData } from "@/hooks/use-stats"
 import { useSupabaseRealtime } from "@/hooks/use-supabase-realtime"
-import { ChartContainer } from '@/components/ui/chart';
 import * as RechartsPrimitive from 'recharts';
-
-const data = [
-  { name: 'Page A', uv: 4000, pv: 2400, amt: 2400 },
-  { name: 'Page B', uv: 3000, pv: 1398, amt: 2210 },
-  { name: 'Page C', uv: 2000, pv: 9800, amt: 2290 },
-  { name: 'Page D', uv: 2780, pv: 3908, amt: 2000 },
-  { name: 'Page E', uv: 1890, pv: 4800, amt: 2181 },
-  { name: 'Page F', uv: 2390, pv: 3800, amt: 2500 },
-  { name: 'Page G', uv: 3490, pv: 4300, amt: 2100 },
-];
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Bar, BarChart, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "@/components/ui/chart"
+import { Users, Calendar, DollarSign, Bed, HeartPulse, Pill, TrendingUp, Loader2, Plus, Search } from "lucide-react"
+import {
+  recentPatientsData,
+  upcomingAppointmentsData,
+  financialMetricsData,
+  departmentFinancialsData,
+} from "@/lib/mock-dashboard-charts";
 
 export default function Dashboard() {
   // Load patient data with custom hook
-  const { patients, fetchPatients, handlePatientChange } = usePatientData()
+  const { patients, patientAdmissionsData, fetchPatients, fetchPatientAdmissions, handlePatientChange } = usePatientData()
+  const [searchTerm, setSearchTerm] = useState("");
   
   // Load stats data with custom hook
   const { 
     loading, 
     stats, 
+    departmentUtilizationData,
     fetchDashboardData, 
     fetchDashboardMetrics,
     fetchMedicalRecordsCount,
     fetchBillingCount,
     fetchDepartmentsCount,
-    fetchRoomsData
+    fetchRoomsData,
+    fetchDepartmentUtilization
   } = useStatsData()
   
   // Set up effect to initialize data
@@ -55,11 +46,13 @@ export default function Dashboard() {
     // Fetch initial data
     fetchDashboardData()
     fetchPatients()
-  }, [fetchDashboardData, fetchPatients])
+    fetchPatientAdmissions()
+  }, [fetchDashboardData, fetchPatients, fetchPatientAdmissions])
   
   // Set up real-time subscriptions using the custom hook
   useSupabaseRealtime('patients', (payload) => {
     fetchDashboardMetrics()
+    fetchPatientAdmissions()
     handlePatientChange(payload)
   })
   
@@ -71,8 +64,14 @@ export default function Dashboard() {
     fetchBillingCount()
     fetchDashboardMetrics()
   })
-  useSupabaseRealtime('departments', () => fetchDepartmentsCount())
-  useSupabaseRealtime('rooms', () => fetchRoomsData())
+  useSupabaseRealtime('departments', () => {
+    fetchDepartmentsCount()
+    fetchDepartmentUtilization()
+  })
+  useSupabaseRealtime('rooms', () => {
+    fetchRoomsData()
+    fetchDepartmentUtilization()
+  })
 
   if (loading) {
     return (
@@ -82,6 +81,10 @@ export default function Dashboard() {
     )
   }
 
+  const filteredPatients = patients.filter(patient => 
+    patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    patient.lastName.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
   return (
     <div className="container mx-auto p-4 md:p-6">
@@ -157,17 +160,14 @@ export default function Dashboard() {
                   <CardDescription>Patient admissions over the last 30 days</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{ /* your chart config here */ }}>
-                    <RechartsPrimitive.LineChart data={data}>
-                      <RechartsPrimitive.XAxis dataKey="name" />
-                      <RechartsPrimitive.YAxis />
-                      <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
-                      <RechartsPrimitive.Tooltip />
-                      <RechartsPrimitive.Legend />
-                      <RechartsPrimitive.Line type="monotone" dataKey="pv" stroke="#8884d8" />
-                      <RechartsPrimitive.Line type="monotone" dataKey="uv" stroke="#82ca9d" />
-                    </RechartsPrimitive.LineChart>
-                  </ChartContainer>
+                <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={patientAdmissionsData}>
+                      <XAxis dataKey="date" tickFormatter={(value) => new Date(value).getDate().toString()} />
+                      <YAxis />
+                      <Tooltip />
+                      <Bar dataKey="admissions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
               <Card className="lg:col-span-3">
@@ -176,17 +176,14 @@ export default function Dashboard() {
                   <CardDescription>Current department capacity usage</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <ChartContainer config={{ /* your chart config here */ }}>
-                    <RechartsPrimitive.LineChart data={data}>
-                      <RechartsPrimitive.XAxis dataKey="name" />
-                      <RechartsPrimitive.YAxis />
-                      <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
-                      <RechartsPrimitive.Tooltip />
-                      <RechartsPrimitive.Legend />
-                      <RechartsPrimitive.Line type="monotone" dataKey="pv" stroke="#8884d8" />
-                      <RechartsPrimitive.Line type="monotone" dataKey="uv" stroke="#82ca9d" />
-                    </RechartsPrimitive.LineChart>
-                  </ChartContainer>
+                <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={departmentUtilizationData}>
+                      <XAxis dataKey="department" />
+                      <YAxis />
+                      <Tooltip />
+                      <Line type="monotone" dataKey="capacity" stroke="hsl(var(--primary))" strokeWidth={2} />
+                    </LineChart>
+                  </ResponsiveContainer>
                 </CardContent>
               </Card>
             </div>
@@ -195,24 +192,44 @@ export default function Dashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Recent Patients</CardTitle>
-                <CardDescription>Patient demographics and distribution</CardDescription>
+                <CardDescription>Recently admitted or registered patients</CardDescription>
+                <div className="flex w-full max-w-sm items-center space-x-2">
+                  <Input
+                    placeholder="Search patients..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="max-w-xs"
+                  />
+                  <Button size="icon">
+                    <Search className="h-4 w-4" />
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={{ 
-                  "male": { color: "#3b82f6" }, 
-                  "female": { color: "#ec4899" },
-                  "other": { color: "#a855f7" }
-                }}>
-                  <RechartsPrimitive.BarChart data={data}>
-                    <RechartsPrimitive.XAxis dataKey="name" />
-                    <RechartsPrimitive.YAxis />
-                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
-                    <RechartsPrimitive.Tooltip />
-                    <RechartsPrimitive.Legend />
-                    <RechartsPrimitive.Bar dataKey="pv" name="Male" fill="#3b82f6" />
-                    <RechartsPrimitive.Bar dataKey="uv" name="Female" fill="#ec4899" />
-                  </RechartsPrimitive.BarChart>
-                </ChartContainer>
+              <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>First Name</TableHead>
+                      <TableHead>Last Name</TableHead>
+                      <TableHead>Date Of Birth</TableHead>
+                      <TableHead>Contact</TableHead>
+                      {/* <TableHead>Status</TableHead> */}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredPatients.map((patient) => (
+                      <TableRow key={patient.id}>
+                        <TableCell>{patient.id}</TableCell>
+                        <TableCell>{patient.firstName}</TableCell>
+                        <TableCell>{patient.lastName}</TableCell>
+                        <TableCell>{patient.dateOfBirth}</TableCell>
+                        <TableCell>{patient.phone}</TableCell>
+                        {/* <TableCell>{patient}</TableCell> */}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
@@ -223,44 +240,15 @@ export default function Dashboard() {
                 <CardDescription>Distribution by department and type</CardDescription>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={{
-                  "emergency": { color: "#ef4444" },
-                  "scheduled": { color: "#3b82f6" },
-                  "followup": { color: "#22c55e" },
-                  "consultation": { color: "#f59e0b" }
-                }}>
-                  <RechartsPrimitive.PieChart>
-                    <RechartsPrimitive.Pie
-                      data={[
-                        { name: 'Emergency', value: 400 },
-                        { name: 'Scheduled', value: 300 },
-                        { name: 'Follow-up', value: 300 },
-                        { name: 'Consultation', value: 200 }
-                      ]}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                      nameKey="name"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {
-                        [
-                          { name: 'Emergency', fill: '#ef4444' },
-                          { name: 'Scheduled', fill: '#3b82f6' },
-                          { name: 'Follow-up', fill: '#22c55e' },
-                          { name: 'Consultation', fill: '#f59e0b' }
-                        ].map((entry, index) => (
-                          <RechartsPrimitive.Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))
-                      }
-                    </RechartsPrimitive.Pie>
-                    <RechartsPrimitive.Tooltip />
-                    <RechartsPrimitive.Legend />
-                  </RechartsPrimitive.PieChart>
-                </ChartContainer>
+              <div className="flex justify-between items-center">
+                  <div>
+                    <CardTitle>Upcoming Appointments</CardTitle>
+                    <CardDescription>Scheduled appointments for the next 7 days</CardDescription>
+                  </div>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" /> New Appointment
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -271,30 +259,28 @@ export default function Dashboard() {
                 <CardDescription>Revenue and expenses for the current period</CardDescription>
               </CardHeader>
               <CardContent>
-                <ChartContainer config={{
-                  "revenue": { color: "#22c55e" },
-                  "expenses": { color: "#ef4444" },
-                  "profit": { color: "#3b82f6" }
-                }}>
-                  <RechartsPrimitive.AreaChart data={[
-                    { month: 'Jan', revenue: 4000, expenses: 2400, profit: 1600 },
-                    { month: 'Feb', revenue: 3000, expenses: 1398, profit: 1602 },
-                    { month: 'Mar', revenue: 2000, expenses: 1800, profit: 200 },
-                    { month: 'Apr', revenue: 2780, expenses: 1908, profit: 872 },
-                    { month: 'May', revenue: 1890, expenses: 1800, profit: 90 },
-                    { month: 'Jun', revenue: 2390, expenses: 1800, profit: 590 },
-                    { month: 'Jul', revenue: 3490, expenses: 2300, profit: 1190 }
-                  ]}>
-                    <RechartsPrimitive.XAxis dataKey="month" />
-                    <RechartsPrimitive.YAxis />
-                    <RechartsPrimitive.CartesianGrid strokeDasharray="3 3" />
-                    <RechartsPrimitive.Tooltip />
-                    <RechartsPrimitive.Legend />
-                    <RechartsPrimitive.Area type="monotone" dataKey="revenue" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.6} />
-                    <RechartsPrimitive.Area type="monotone" dataKey="expenses" stackId="2" stroke="#ef4444" fill="#ef4444" fillOpacity={0.6} />
-                    <RechartsPrimitive.Line type="monotone" dataKey="profit" stroke="#3b82f6" strokeWidth={2} dot={{ r: 4 }} />
-                  </RechartsPrimitive.AreaChart>
-                </ChartContainer>
+              <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Doctor</TableHead>
+                      <TableHead>Department</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {upcomingAppointmentsData.map((appointment) => (
+                      <TableRow key={appointment.id}>
+                        <TableCell>
+                          {appointment.date} {appointment.time}
+                        </TableCell>
+                        <TableCell>{appointment.patientName}</TableCell>
+                        <TableCell>{appointment.doctorName}</TableCell>
+                        <TableCell>{appointment.department}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
