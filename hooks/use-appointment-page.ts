@@ -3,6 +3,7 @@ import { useCalendarView } from './use-calendar-view'
 import { useFilters } from './use-filters'
 import { useDialog } from './use-dialog'
 import { useEffect } from 'react'
+import { useDepartments } from './use-departments'
 
 export function useAppointmentPage() {
   const {
@@ -15,7 +16,6 @@ export function useAppointmentPage() {
     handleStatusChange,
     handleNewAppointment,
     getAppointmentsForDate,
-    getFilters
   } = useAppointments()
 
   const {
@@ -26,6 +26,8 @@ export function useAppointmentPage() {
     goToToday,
     handleDateSelect,
   } = useCalendarView()
+
+  const { departments, doctors, fetchDepartments, fetchDoctors } = useDepartments()
 
   const {
     filters,
@@ -48,6 +50,15 @@ export function useAppointmentPage() {
       filters.statusFilter
     )
   }, [filterAppointments, filters.departmentFilter, filters.doctorFilter, filters.statusFilter])
+
+
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchDoctors();
+  }, [])
+
+
 
   return {
     // Loading state
@@ -73,8 +84,10 @@ export function useAppointmentPage() {
     filters,
     setters,
     resetFilters,
-    getFilters,
 
+    // Department and Doctors
+    departments, 
+    doctors,
     // Dialog controls
     newAppointmentDialog
   }

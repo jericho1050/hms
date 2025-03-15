@@ -158,7 +158,7 @@ export function DailySchedule({ appointments, date, onStatusChange }: DailySched
                             <div className="flex flex-col">
                               <span className="font-medium">{appointment.patientName}</span>
                               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span className="text-[10px] line-clamp-1">
+                                <span className="text-[10px]">
                                   {appointment.startTime} - {appointment.endTime}
                                 </span>
                                 <span>•</span>

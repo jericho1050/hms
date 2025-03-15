@@ -52,14 +52,14 @@ export default function AppointmentsPage() {
     filters,
     setters,
     resetFilters,
-    getFilters,
+    departments,
+    doctors,
 
     // Dialog controls
-    newAppointmentDialog
+    newAppointmentDialog,
   } = useAppointmentPage();
 
   const appointmentsForSelectedDate = getAppointmentsForDate(selectedDate);
-  const { departments, doctors } = getFilters();
 
   if (isLoading) {
     return (
@@ -145,40 +145,47 @@ export default function AppointmentsPage() {
           <span className='text-sm font-medium'>Filters:</span>
         </div>
         <div className='grid grid-cols-1 md:grid-cols-3 gap-4 w-full'>
-          <Select value={filters.departmentFilter} onValueChange={setters.setDepartmentFilter}>
+          <Select
+            value={filters.departmentFilter}
+            onValueChange={setters.setDepartmentFilter}
+          >
             <SelectTrigger>
               <SelectValue placeholder='Department' />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent >
               <SelectItem value='all'>All Departments</SelectItem>
-              {departments.map((department) => (
-                <SelectItem key={department} value={department.toLowerCase()}>
-                  {department}
+              {departments.map((department, index) => (
+                <SelectItem
+                  key={'deparment' + index + department.id}
+                  value={department.name.toLowerCase()}
+                >
+                  {department.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.doctorFilter} onValueChange={setters.setDoctorFilter}>
+          <Select
+            value={filters.doctorFilter}
+            onValueChange={setters.setDoctorFilter}
+          >
             <SelectTrigger>
               <SelectValue placeholder='Doctor' />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value='all'>All Doctors</SelectItem>
-              {doctors.map((doctorId) => {
-                const doctor = appointments.find(
-                  (a) => a.doctorId === doctorId
-                );
-                return (
-                  <SelectItem key={doctorId} value={doctorId}>
-                    {doctor?.doctorName}
-                  </SelectItem>
-                );
-              })}
+              {doctors.map((doctor, index) => (
+                <SelectItem key={'doctor' + index + doctor.id} value={doctor.id}>
+                  {doctor.firstName} {doctor.lastName}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.statusFilter} onValueChange={setters.setStatusFilter}>
+          <Select
+            value={filters.statusFilter}
+            onValueChange={setters.setStatusFilter}
+          >
             <SelectTrigger>
               <SelectValue placeholder='Status' />
             </SelectTrigger>
@@ -196,53 +203,70 @@ export default function AppointmentsPage() {
       </div>
 
       {/* New Layout: Side-by-Side Calendar and Detail View */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
         {/* Left: Calendar Panel */}
-        <div className="lg:col-span-1">
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-muted/50 pb-2">
-              <CardTitle className="text-lg">Calendar</CardTitle>
+        <div className='lg:col-span-1'>
+          <Card className='overflow-hidden'>
+            <CardHeader className='bg-muted/50 pb-2'>
+              <CardTitle className='text-lg'>Calendar</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className='pt-4'>
               {/* Filters Panel */}
-              <div className="space-y-4 mb-4">
-                <h3 className="text-sm font-medium flex items-center gap-2">
-                  <Filter className="h-4 w-4" /> Filters
+              <div className='space-y-4 mb-4'>
+                <h3 className='text-sm font-medium flex items-center gap-2'>
+                  <Filter className='h-4 w-4' /> Filters
                 </h3>
-                <Select value={filters.departmentFilter} onValueChange={setters.setDepartmentFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Department" />
+                <Select
+                  value={filters.departmentFilter}
+                  onValueChange={setters.setDepartmentFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='Department' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>All Departments</SelectItem>
-                    {departments.map((department) => (
-                      <SelectItem key={department} value={department.toLowerCase()}>
-                        {department}
+                    {departments.map((department, index) => (
+                      <SelectItem
+                        key={'filter ' + department.id + index}
+                        value={department.name.toLowerCase()}
+                      >
+                        {department.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Select value={filters.doctorFilter} onValueChange={setters.setDoctorFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Doctor" />
+                <Select
+                  value={filters.doctorFilter}
+                  onValueChange={setters.setDoctorFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='Doctor' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>All Doctors</SelectItem>
-                    {doctors.map((doctorId) => {
-                      const doctor = appointments.find(
-                        (a) => a.doctorId === doctorId
-                      );
+                    {doctors.map((doctor: any) => {
+                      const doctorId =
+                        typeof doctor === 'string' ? doctor : doctor.id;
+                      const doctorName =
+                        typeof doctor === 'string'
+                          ? appointments.find((a) => a.doctorId === doctorId)
+                              ?.doctorName
+                          : doctor.name;
+
                       return (
-                        <SelectItem key={doctorId} value={doctorId}>
-                          {doctor?.doctorName}
+                        <SelectItem key={'filter' + doctorId} value={doctorId}>
+                          {doctorName}
                         </SelectItem>
                       );
                     })}
                   </SelectContent>
                 </Select>
-                <Select value={filters.statusFilter} onValueChange={setters.setStatusFilter}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Status" />
+                <Select
+                  value={filters.statusFilter}
+                  onValueChange={setters.setStatusFilter}
+                >
+                  <SelectTrigger className='w-full'>
+                    <SelectValue placeholder='Status' />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value='all'>All Statuses</SelectItem>
@@ -255,39 +279,39 @@ export default function AppointmentsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              
+
               {/* Full-size Calendar Component */}
               <AppointmentCalendar
-                mode="single"
+                mode='single'
                 selected={selectedDate}
                 onSelect={handleDateSelect}
                 appointments={filteredAppointments}
-                className="border-0"
+                className='border-0'
                 disableWeekends={true}
                 minDate={new Date()} // Prevent selecting dates in the past
               />
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Right: Appointment Details */}
-        <div className="lg:col-span-2">
+        <div className='lg:col-span-2'>
           <Card>
-            <CardHeader className="bg-muted/50 pb-2 flex flex-row items-center justify-between">
+            <CardHeader className='bg-muted/50 pb-2 flex flex-row items-center justify-between'>
               <div>
-                <CardTitle className="text-lg">
+                <CardTitle className='text-lg'>
                   {format(selectedDate, 'EEEE, MMMM d, yyyy')}
                 </CardTitle>
-                <p className="text-sm text-muted-foreground">
+                <p className='text-sm text-muted-foreground'>
                   {appointmentsForSelectedDate.length} appointments
                 </p>
               </div>
               <Button onClick={newAppointmentDialog.open}>
-                <PlusCircle className="h-4 w-4 mr-2" />
+                <PlusCircle className='h-4 w-4 mr-2' />
                 New Appointment
               </Button>
             </CardHeader>
-            <CardContent className="pt-4">
+            <CardContent className='pt-4'>
               <Tabs defaultValue='daily' className='w-full'>
                 <TabsList className='grid w-full grid-cols-2 mb-4'>
                   <TabsTrigger value='daily'>
@@ -324,11 +348,28 @@ export default function AppointmentsPage() {
       <NewAppointmentForm
         isOpen={newAppointmentDialog.isOpen}
         onClose={newAppointmentDialog.close}
-        onSubmit={handleNewAppointment}
-        departments={departments}
-        doctors={appointments.map((a) => ({
-          id: a.doctorId,
-          name: a.doctorName,
+        onSubmit={async (appointmentData) => {
+          try {
+            // Submit the appointment data
+            await handleNewAppointment(appointmentData);
+            
+            // If the new appointment was for the selected date, update the view
+            if (appointmentData.date instanceof Date && 
+                appointmentData.date.toDateString() === selectedDate.toDateString()) {
+              // Go to the appointment date to show the newly created appointment
+              handleDateSelect(appointmentData.date);
+            }
+            
+            return true;
+          } catch (error) {
+            console.error('Error in appointment submission:', error);
+            return false;
+          }
+        }}
+        departments={departments.map((dept) => dept.name)}
+        doctors={doctors.map((doctor) => ({
+          ...doctor,
+          name: `${doctor.firstName} ${doctor.lastName}`,
         }))}
       />
     </div>

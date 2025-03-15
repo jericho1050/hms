@@ -15,4 +15,7 @@ export interface Staff {
     availability?: Record<string, string>
   }
   
+ export interface Doctor extends Staff {
+
+  }
   

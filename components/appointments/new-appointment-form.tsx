@@ -37,15 +37,17 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Loader2, CalendarIcon } from 'lucide-react';
+import { Loader2, CalendarIcon, User, CheckCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { mockPatients } from '@/lib/mock-appointments';
 import { usePatientData } from '@/hooks/use-patient';
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { Check } from 'lucide-react';
+import { AppointmentFormValues, NewAppointmentFormProps } from '@/types/appointment-form';
+import { useToast } from '@/hooks/use-toast';
 
 // Form schema
-const appointmentFormSchema = z.object({
+export const appointmentFormSchema = z.object({
   patientId: z.string().min(1, 'Patient is required'),
   doctorId: z.string().min(1, 'Doctor is required'),
   department: z.string().min(1, 'Department is required'),
@@ -56,22 +58,20 @@ const appointmentFormSchema = z.object({
   endTime: z.string().min(1, 'End time is required'),
   type: z.string().min(1, 'Appointment type is required'),
   notes: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    // If we have both start and end times, validate that end time is after start time
+    if (data.startTime && data.endTime) {
+      return data.endTime > data.startTime;
+    }
+    return true; // If we don't have both times yet, consider it valid
+  },
+  {
+    message: 'End time must be after start time',
+    path: ['endTime'], // This will make the error show up on the endTime field
+  }
+);
 
-type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
-
-interface Doctor {
-  id: string;
-  name: string;
-}
-
-interface NewAppointmentFormProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (data: any) => void;
-  departments: string[];
-  doctors: Doctor[];
-}
 
 export function NewAppointmentForm({
   isOpen,
@@ -82,6 +82,8 @@ export function NewAppointmentForm({
 }: NewAppointmentFormProps) {
   const { patients, fetchPatients } = usePatientData();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { toast } = useToast();
+  
   // Initialize the form
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
@@ -101,6 +103,20 @@ export function NewAppointmentForm({
     fetchPatients();
   }, []);
 
+  // Watch for doctor changes to update department
+  const watchedDoctorId = form.watch('doctorId');
+  
+  // Auto-populate department based on doctor selection
+  useEffect(() => {
+    if (watchedDoctorId) {
+      const selectedDoctor = doctors.find(doctor => doctor.id === watchedDoctorId);
+      if (selectedDoctor?.department) {
+        // Simply set the department value directly from the doctor's department
+        form.setValue('department', selectedDoctor.department);
+      }
+    }
+  }, [watchedDoctorId, doctors, form]);
+
   // Handle form submission
   const handleFormSubmit = async (data: AppointmentFormValues) => {
     setIsSubmitting(true);
@@ -117,15 +133,38 @@ export function NewAppointmentForm({
           ? `${patient.firstName} ${patient.lastName}`
           : 'Unknown Patient',
         doctorName: doctor ? doctor.name : 'Unknown Doctor',
-        date: data.date.toISOString(),
+        date: data.date,
       };
 
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onSubmit(appointmentData);
+      // Show loading toast that we'll update on success/failure
+      const loadingToast = toast({
+        title: 'Creating appointment...',
+        description: 'Please wait while we schedule your appointment.',
+      });
+
+      // Submit the appointment data to the parent component's handler
+     onSubmit(appointmentData);
+      
+      // Update toast to show success
+      loadingToast.update({
+        id: loadingToast.id,
+        title: 'Appointment Scheduled!',
+        description: `Successfully scheduled for ${patient?.firstName || 'patient'} on ${format(data.date, 'MMMM d, yyyy')} at ${data.startTime}`,
+        variant: 'default',
+      });
+
+      // Reset form and close dialog
       form.reset();
+      onClose();
     } catch (error) {
       console.error('Error creating appointment:', error);
+      
+      // Show error toast
+      toast({
+        title: 'Failed to schedule appointment',
+        description: 'An error occurred while scheduling the appointment. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -203,7 +242,8 @@ export function NewAppointmentForm({
                                   }`
                                 : 'Select patient'
                               : 'Select patient'}
-                            <CalendarIcon className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                              
+                            <User className='ml-2 h-4 w-4 shrink-0 opacity-50' />
                           </Button>
                         </FormControl>
                       </PopoverTrigger>
@@ -243,27 +283,69 @@ export function NewAppointmentForm({
               <div className='grid grid-cols-2 gap-4'>
                 <FormField
                   control={form.control}
-                  name='department'
+                  name='doctorId'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Department</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Select department' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {departments.map((department) => (
-                            <SelectItem key={department} value={department}>
-                              {department}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Doctor</FormLabel>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <FormControl>
+                            <Button
+                              variant='outline'
+                              role='combobox'
+                              className={cn(
+                                'w-full justify-between',
+                                !field.value && 'text-muted-foreground'
+                              )}
+                            >
+                              {field.value
+                                ? doctors.find(
+                                    (doctor) => doctor.id === field.value
+                                  )
+                                  ? `${
+                                      doctors.find(
+                                        (doctor) => doctor.id === field.value
+                                      )?.firstName
+                                    } ${
+                                      doctors.find(
+                                        (doctor) => doctor.id === field.value
+                                      )?.lastName
+                                    }`
+                                  : 'Select doctor'
+                                : 'Select doctor'}
+                                
+                              <User className='ml-2 h-4 w-4 shrink-0 opacity-50' />
+                            </Button>
+                          </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className='w-[300px] p-0'>
+                          <Command>
+                            <CommandInput placeholder='Search doctor...' />
+                            <CommandEmpty>No doctor found.</CommandEmpty>
+                            <CommandGroup className='max-h-[200px] overflow-y-auto'>
+                              {doctors.map((doctor) => (
+                                <CommandItem
+                                  key={doctor.id}
+                                  value={`${doctor.firstName} ${doctor.lastName}`}
+                                  onSelect={() => {
+                                    form.setValue('doctorId', doctor.id);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      'mr-2 h-4 w-4',
+                                      field.value === doctor.id
+                                        ? 'opacity-100'
+                                        : 'opacity-0'
+                                    )}
+                                  />
+                                  {doctor.firstName} {doctor.lastName}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -271,27 +353,25 @@ export function NewAppointmentForm({
 
                 <FormField
                   control={form.control}
-                  name='doctorId'
+                  name='department'
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Doctor</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder='Select doctor' />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {doctors.map((doctor) => (
-                            <SelectItem key={doctor.id} value={doctor.id}>
-                              Dr. {doctor.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Department</FormLabel>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            'w-full justify-between text-left font-normal',
+                            !field.value && 'text-muted-foreground'
+                          )}
+                          disabled={true}
+                        >
+                          {field.value || 'Auto-populated from Doctor'}
+                        </Button>
+                      </FormControl>
+                      <FormDescription>
+                        Automatically set based on doctor's department
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -355,7 +435,15 @@ export function NewAppointmentForm({
                     <FormItem>
                       <FormLabel>Start Time</FormLabel>
                       <Select
-                        onValueChange={field.onChange}
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          
+                          // When start time changes, clear end time if it's now invalid
+                          const currentEndTime = form.getValues('endTime');
+                          if (currentEndTime && currentEndTime <= value) {
+                            form.setValue('endTime', '');
+                          }
+                        }}
                         defaultValue={field.value}
                       >
                         <FormControl>
@@ -385,6 +473,7 @@ export function NewAppointmentForm({
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
+                        disabled={!form.getValues('startTime')} // Disable until start time is selected
                       >
                         <FormControl>
                           <SelectTrigger>
@@ -404,6 +493,9 @@ export function NewAppointmentForm({
                         </SelectContent>
                       </Select>
                       <FormMessage />
+                      <FormDescription>
+                        Must be later than the start time
+                      </FormDescription>
                     </FormItem>
                   )}
                 />
