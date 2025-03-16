@@ -37,12 +37,14 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import type { Patient } from "@/types/patients"
+import { supabase } from "@/utils/supabase/client"
+import { mapDbPatientToPatient } from "@/hooks/use-patient"
 
 interface PatientsTableProps {
   searchQuery: string
   genderFilter: string
   statusFilter: string
-  patients: Patient[]
+  patients: Patient[] // This will now be only the current page's patients
   isLoading: boolean
   updatePatient: (updatedPatient: Patient) => Promise<any>
   deletePatient: (patientId: string) => Promise<any>
@@ -57,51 +59,83 @@ export function PatientsTable({
   updatePatient,
   deletePatient
 }: PatientsTableProps) {
-
   
-  const [filteredPatients, setFilteredPatients] = useState<Patient[]>([])
-  const [currentPage, setCurrentPage] = useState(1)
+  const [currentPage, setCurrentPage] = useState(0) // Change to 0-indexed to match Supabase
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [totalCount, setTotalCount] = useState(0)
+  const [paginatedPatients, setPaginatedPatients] = useState<Patient[]>([])
+  const [isRefetching, setIsRefetching] = useState(false)
   const { toast } = useToast()
 
   const patientsPerPage = 10
-  const totalPages = Math.ceil(filteredPatients.length / patientsPerPage)
+  const totalPages = Math.ceil(totalCount / patientsPerPage)
 
-  // Filter patients based on search query, gender filter, and status filter
+  // Function to fetch patients with server-side pagination and filtering
+  const fetchPaginatedPatients = async () => {
+    try {
+      setIsRefetching(true)
+      
+      // Start building the query
+      let query = supabase
+        .from('patients')
+        .select('*', { count: 'exact' })
+      
+      // Apply filters
+      if (searchQuery) {
+        const searchTerms = searchQuery.toLowerCase()
+        query = query
+          .or(`first_name.ilike.%${searchTerms}%,last_name.ilike.%${searchTerms}%,email.ilike.%${searchTerms}%,id.ilike.%${searchTerms}%`)
+      }
+      
+      if (genderFilter !== "all") {
+        query = query.eq('gender', genderFilter)
+      }
+      
+      if (statusFilter !== "all") {
+        query = query.eq('status', statusFilter)
+      }
+      
+      // Calculate range
+      const start = currentPage * patientsPerPage
+      const end = start + patientsPerPage - 1
+      
+      // Apply pagination
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(start, end)
+      
+      if (error) {
+        throw error
+      }
+      
+      // Map database records to our Patient type using the existing mapper
+      const mappedPatients = data ? data.map(dbRecord => mapDbPatientToPatient(dbRecord)) : []
+      
+      setPaginatedPatients(mappedPatients)
+      
+      // Update total count for pagination
+      if (count !== null) {
+        setTotalCount(count)
+      }
+    } catch (error) {
+      console.error('Error fetching paginated patients:', error)
+      toast({
+        title: "Error",
+        description: "Failed to fetch patients",
+        variant: "destructive",
+      })
+    } finally {
+      setIsRefetching(false)
+    }
+  }
+  
+  // Fetch paginated patients when page, filters change
   useEffect(() => {
-    let filtered = [...patients]
-
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (patient) =>
-          patient.firstName.toLowerCase().includes(query) ||
-          patient.lastName.toLowerCase().includes(query) ||
-          patient.email.toLowerCase().includes(query) ||
-          patient.id.toLowerCase().includes(query),
-      )
-    }
-
-    if (genderFilter !== "all") {
-      filtered = filtered.filter((patient) => patient.gender.toLowerCase() === genderFilter)
-    }
-
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((patient) => patient.status === statusFilter)
-    }
-
-    setFilteredPatients(filtered)
-    setCurrentPage(1) // Reset to first page when filters change
-  }, [patients, searchQuery, genderFilter, statusFilter])
-
-  // Get current page patients
-  const currentPatients = filteredPatients.slice(
-    (currentPage - 1) * patientsPerPage, 
-    currentPage * patientsPerPage
-  )
+    fetchPaginatedPatients()
+  }, [currentPage, searchQuery, genderFilter, statusFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
@@ -136,6 +170,13 @@ export function PatientsTable({
         title: "Patient deleted",
         description: `${selectedPatient.firstName} ${selectedPatient.lastName} has been removed`,
       })
+      
+      // Refetch current page (or go to previous page if this was the only item)
+      if (paginatedPatients.length === 1 && currentPage > 0) {
+        setCurrentPage(currentPage - 1)
+      } else {
+        fetchPaginatedPatients()
+      }
     } catch (error) {
       console.error("Error deleting patient:", error)
       toast({
@@ -160,6 +201,9 @@ export function PatientsTable({
         title: "Patient updated",
         description: "Patient information has been updated successfully",
       })
+      
+      // Refresh the current page data
+      fetchPaginatedPatients()
     } catch (error) {
       console.error("Error updating patient:", error)
       toast({
@@ -171,6 +215,10 @@ export function PatientsTable({
       setIsEditModalOpen(false)
     }
   }
+  
+  // Get the patients to display - either from our server-paginated data or original prop
+  const displayPatients = paginatedPatients.length > 0 ? paginatedPatients : patients
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -188,7 +236,7 @@ export function PatientsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
+            {isLoading || isRefetching ? (
               <TableRow>
                 <TableCell colSpan={7} className="h-24 text-center">
                   <div className="flex flex-col items-center justify-center text-muted-foreground">
@@ -196,8 +244,8 @@ export function PatientsTable({
                   </div>
                 </TableCell>
               </TableRow>
-            ) : currentPatients.length > 0 ? (
-              currentPatients.map((patient) => (
+            ) : displayPatients.length > 0 ? (
+              displayPatients.map((patient) => (
                 <TableRow key={patient.id}>
                   {/* <TableCell className="font-medium">{patient.id}</TableCell> */}
                   <TableCell>{`${patient.firstName} ${patient.lastName}`}</TableCell>
@@ -277,40 +325,40 @@ export function PatientsTable({
       </div>
 
       {/* Pagination */}
-      {filteredPatients.length > 0 && (
+      {totalCount > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Showing {(currentPage - 1) * patientsPerPage + 1} to{" "}
-            {Math.min(currentPage * patientsPerPage, filteredPatients.length)} of {filteredPatients.length} patients
+            Showing {currentPage * patientsPerPage + 1} to{" "}
+            {Math.min((currentPage + 1) * patientsPerPage, totalCount)} of {totalCount} patients
           </div>
           <div className="flex items-center space-x-2">
-            <Button variant="outline" size="icon" onClick={() => handlePageChange(1)} disabled={currentPage === 1}>
+            <Button variant="outline" size="icon" onClick={() => handlePageChange(0)} disabled={currentPage === 0}>
               <ChevronsLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
               onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
+              disabled={currentPage === 0}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="text-sm">
-              Page {currentPage} of {totalPages}
+              Page {currentPage + 1} of {totalPages}
             </span>
             <Button
               variant="outline"
               size="icon"
               onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages - 1 || totalPages === 0}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => handlePageChange(totalPages)}
-              disabled={currentPage === totalPages}
+              onClick={() => handlePageChange(totalPages - 1)}
+              disabled={currentPage === totalPages - 1 || totalPages === 0}
             >
               <ChevronsRight className="h-4 w-4" />
             </Button>

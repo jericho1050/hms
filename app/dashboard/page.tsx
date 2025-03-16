@@ -47,6 +47,8 @@ import {
   Loader2,
   Plus,
   Search,
+  ChevronRight,
+  AlertCircle,
 } from 'lucide-react';
 import {
   recentPatientsData,
@@ -55,16 +57,22 @@ import {
   departmentFinancialsData,
 } from '@/lib/mock-dashboard-charts';
 import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/utils/supabase/client';
+import { Patient } from '@/types/patients';
+import Link from 'next/link';
+import { mapDbPatientToPatient } from '@/hooks/use-patient';
+
 export default function Dashboard() {
   // Load patient data with custom hook
   const {
-    patients,
     patientAdmissionsData,
-    fetchPatients,
     fetchPatientAdmissions,
     handlePatientChange,
   } = usePatientData();
+  
   const [searchTerm, setSearchTerm] = useState('');
+  const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
+  const [isLoadingPatients, setIsLoadingPatients] = useState(true);
 
   // Load stats data with custom hook
   const {
@@ -80,19 +88,47 @@ export default function Dashboard() {
     fetchDepartmentUtilization,
   } = useStatsData();
 
+  // Fetch recent patients using server-side pagination
+  const fetchRecentPatients = async () => {
+    try {
+      setIsLoadingPatients(true);
+      
+      const { data, error } = await supabase
+        .from('patients')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .range(0, 9); // Get the 10 most recent patients (0-9 is 10 items)
+      
+      if (error) {
+        throw error;
+      }
+      
+      if (data) {
+        // Map database records to our Patient type
+        const mappedPatients = data.map(dbRecord => mapDbPatientToPatient(dbRecord));
+        setRecentPatients(mappedPatients);
+      }
+    } catch (error) {
+      console.error('Error fetching recent patients:', error);
+    } finally {
+      setIsLoadingPatients(false);
+    }
+  };
+
   // Set up effect to initialize data
   useEffect(() => {
     // Fetch initial data
     fetchDashboardData();
-    fetchPatients();
+    fetchRecentPatients();
     fetchPatientAdmissions();
-  }, [fetchDashboardData, fetchPatients, fetchPatientAdmissions]);
+  }, [fetchDashboardData, fetchPatientAdmissions]);
 
   // Set up real-time subscriptions using the custom hook
   useSupabaseRealtime('patients', (payload) => {
     fetchDashboardMetrics();
     fetchPatientAdmissions();
     handlePatientChange(payload);
+    fetchRecentPatients(); // Re-fetch recent patients when patients table changes
   });
 
   useSupabaseRealtime('appointments', () => fetchDashboardMetrics());
@@ -120,7 +156,8 @@ export default function Dashboard() {
     );
   }
 
-  const filteredPatients = patients.filter(
+  // Filter the recent patients based on search term
+  const filteredPatients = recentPatients.filter(
     (patient) =>
       patient.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       patient.lastName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -255,16 +292,18 @@ export default function Dashboard() {
                 <CardDescription>
                   Recently admitted or registered patients
                 </CardDescription>
-                <div className='flex w-full max-w-sm items-center space-x-2'>
-                  <Input
-                    placeholder='Search patients...'
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className='max-w-xs'
-                  />
-                  <Button size='icon'>
-                    <Search className='h-4 w-4' />
-                  </Button>
+                <div className='flex justify-between items-center'>
+                  <div className='flex w-full max-w-sm items-center space-x-2'>
+                    <Input
+                      placeholder='Search patients...'
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className='max-w-xs'
+                    />
+                    <Button size='icon'>
+                      <Search className='h-4 w-4' />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -274,35 +313,63 @@ export default function Dashboard() {
                       <TableHead>First Name</TableHead>
                       <TableHead>Last Name</TableHead>
                       <TableHead>Date Of Birth</TableHead>
-                      <TableHead>Contact</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Contact</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredPatients.map((patient) => (
-                      <TableRow key={patient.id}>
-                        <TableCell>{patient.firstName}</TableCell>
-                        <TableCell>{patient.lastName}</TableCell>
-                        <TableCell>{patient.dateOfBirth}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              patient.status === 'Admitted'
-                                ? 'admitted'
-                                : patient.status === 'Discharged'
-                                ? 'discharged'
-                                : 'outpatient'
-                            }
-                            className='capitalize'
-                          >
-                            {patient.status}
-                          </Badge>
+                    {isLoadingPatients ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <p>Loading patients...</p>
+                          </div>
                         </TableCell>
-                        <TableCell>{patient.phone}</TableCell>
                       </TableRow>
-                    ))}
+                    ) : filteredPatients.length > 0 ? (
+                      filteredPatients.map((patient) => (
+                        <TableRow key={patient.id}>
+                          <TableCell>{patient.firstName}</TableCell>
+                          <TableCell>{patient.lastName}</TableCell>
+                          <TableCell>{new Date(patient.dateOfBirth).toLocaleDateString()}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                patient.status === 'Admitted'
+                                  ? 'admitted'
+                                  : patient.status === 'Discharged'
+                                  ? 'discharged'
+                                  : 'outpatient'
+                              }
+                              className='capitalize'
+                            >
+                              {patient.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{patient.phone}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                          <div className="flex flex-col items-center justify-center text-muted-foreground">
+                            <AlertCircle className="h-8 w-8 mb-2" />
+                            <p>No patients found</p>
+                            <p className="text-sm">Try adjusting your search</p>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
+                
+                <div className="mt-4 flex justify-end">
+                  <Link href="/patients">
+                    <Button variant="outline" className="text-sm flex items-center gap-1">
+                      View All Patients <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from '@/utils/supabase/client';
 import { usePatientData } from '@/hooks/use-patient';
 
 export default function PatientsPage() {
@@ -26,38 +25,15 @@ export default function PatientsPage() {
   const [genderFilter, setGenderFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const { toast } = useToast();
+  
+  // We're no longer fetching all patients upfront
   const {
-    patients,
-    fetchPatients,
+    // No need for patients array since we'll fetch paginated data directly in the PatientsTable
     isLoading,
     createPatient,
     updatePatient,
     deletePatient,
   } = usePatientData();
-
-  const handleRefresh = async () => {
-    try {
-      // Call fetchPatients to get the latest data from the database
-      const result = await fetchPatients();
-
-      // Check if there was an error during fetching
-      if (result.error) {
-        throw result.error;
-      }
-
-      toast({
-        title: 'Refreshed',
-        description: 'Patient data has been refreshed',
-      });
-    } catch (error) {
-      console.error('Error refreshing patient data:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to refresh patient data',
-        variant: 'destructive',
-      });
-    }
-  };
 
   const handleNewPatientSubmit = async (patientData: PatientFormValues) => {
     try {
@@ -140,16 +116,6 @@ export default function PatientsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            variant='outline'
-            size='icon'
-            onClick={handleRefresh}
-            disabled={isLoading}
-          >
-            <RefreshCw
-              className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`}
-            />
-          </Button>
         </div>
       </div>
 
@@ -157,7 +123,7 @@ export default function PatientsPage() {
         searchQuery={searchQuery}
         genderFilter={genderFilter}
         statusFilter={statusFilter}
-        patients={patients}
+        patients={[]} // Pass empty array as server-side pagination handles fetching
         isLoading={isLoading}
         updatePatient={updatePatient}
         deletePatient={deletePatient}
