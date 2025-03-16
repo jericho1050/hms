@@ -196,7 +196,7 @@ export default function StaffManagementPage() {
           </div>
           <div className="flex items-center gap-2">
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-auto">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>

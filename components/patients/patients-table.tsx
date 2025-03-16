@@ -78,40 +78,66 @@ export function PatientsTable({
     try {
       setIsRefetching(true)
       
-      // Start building the query
-      let query = supabase
-        .from('patients')
-        .select('*', { count: 'exact' })
-      
-      // Apply filters
-      if (searchQuery) {
-        const searchTerms = searchQuery.toLowerCase()
-        query = query
-          .or(`first_name.ilike.%${searchTerms}%,last_name.ilike.%${searchTerms}%,email.ilike.%${searchTerms}%,id.ilike.%${searchTerms}%`)
-      }
-      
-      if (genderFilter !== "all") {
-        query = query.eq('gender', genderFilter)
-      }
-      
-      if (statusFilter !== "all") {
-        query = query.eq('status', statusFilter)
-      }
+      // For debugging
+      console.log('Fetching with filters:', { searchQuery, genderFilter, statusFilter, page: currentPage })
       
       // Calculate range
       const start = currentPage * patientsPerPage
       const end = start + patientsPerPage - 1
       
-      // Apply pagination
+      // Start building the query
+      let query = supabase
+        .from('patients')
+        .select('*', { count: 'exact' })
+      
+      // Apply gender filter if not "all"
+      if (genderFilter !== "all") {
+        query = query.eq('gender', genderFilter.toLowerCase())
+      }
+      
+      // Apply status filter if not "all"
+      if (statusFilter !== "all") {
+        query = query.eq('status', statusFilter)
+      }
+      
+      // Apply search filter if provided
+      if (searchQuery && searchQuery.trim() !== '') {
+        const searchTerms = `%${searchQuery.toLowerCase().trim()}%`
+        
+        // We need to run multiple queries and combine results for OR search across multiple columns
+        // First, get IDs of patients that match any search condition
+        const { data: matchingIds } = await supabase
+          .from('patients')
+          .select('id')
+          .or(
+            `first_name.ilike.${searchTerms},last_name.ilike.${searchTerms},email.ilike.${searchTerms}`
+          )
+        
+        if (matchingIds && matchingIds.length > 0) {
+          // Add the IDs to the main query
+          query = query.in('id', matchingIds.map(row => row.id))
+        } else {
+          // No matches, return empty result
+          setPaginatedPatients([])
+          setTotalCount(0)
+          setIsRefetching(false)
+          return
+        }
+      }
+      
+      // Apply pagination and ordering
       const { data, error, count } = await query
         .order('created_at', { ascending: false })
         .range(start, end)
       
       if (error) {
+        console.error('Supabase query error:', error)
         throw error
       }
       
-      // Map database records to our Patient type using the existing mapper
+      console.log('Results:', { count: data?.length, totalCount: count })
+      
+      // Map database records to our Patient type
       const mappedPatients = data ? data.map(dbRecord => mapDbPatientToPatient(dbRecord)) : []
       
       setPaginatedPatients(mappedPatients)
@@ -136,6 +162,11 @@ export function PatientsTable({
   useEffect(() => {
     fetchPaginatedPatients()
   }, [currentPage, searchQuery, genderFilter, statusFilter])
+  
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0)
+  }, [searchQuery, genderFilter, statusFilter])
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
