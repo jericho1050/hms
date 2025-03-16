@@ -370,7 +370,7 @@ export function FinancialReports({ dateRange, departmentFilter, reportTypeFilter
                 ))}
               </TableBody>
             </Table>
-          </div>a
+          </div>
         </CardContent>
       </Card>
     </div>

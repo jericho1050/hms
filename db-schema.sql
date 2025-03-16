@@ -1,3 +1,6 @@
+-- Ensure the uuid-ossp extension is available
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -------------- VIEWS ----------------------------
 create view public.appointment_dashboard_view as 
 SELECT a.id,
@@ -215,7 +218,7 @@ CREATE TABLE public.staff (
   id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  user_id uuid NOT NULL,
+  user_id uuid,
   first_name text NOT NULL,
   last_name text NOT NULL,
   role text NOT NULL,
@@ -228,6 +231,7 @@ CREATE TABLE public.staff (
   address text NULL,
   status text NOT NULL,
   license_number text NULL,
+  availability JSONB DEFAULT '{}'::jsonb,
   CONSTRAINT staff_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_staff_department ON public.staff USING btree (department) TABLESPACE pg_default;
@@ -340,5 +344,3 @@ FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
 
 -------------------------------------------------
-
-

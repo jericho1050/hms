@@ -15,20 +15,18 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { ChevronLeft, ChevronRight, Calendar, Clock, Edit } from "lucide-react"
-import type { Staff } from "@/types/staff"
+import type { Staff, Schedule } from "@/types/staff"
 import { useToast } from "@/hooks/use-toast"
+import { useStaffData } from "@/hooks/use-staff"
 
-interface StaffAvailabilityProps {
-  staff: Staff[]
-  onStaffUpdate: (updatedStaff: Staff) => void
-}
 
-export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityProps) {
+export function StaffAvailability() {
   const [currentWeek, setCurrentWeek] = useState<Date>(new Date())
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
   const [isEditScheduleOpen, setIsEditScheduleOpen] = useState(false)
   const [editingDay, setEditingDay] = useState<string>("")
-  const [editingShift, setEditingShift] = useState<string>("morning")
+  const [editingShift, setEditingShift] = useState<Schedule>("morning")
+  const {staffData, handleStaffUpdate}= useStaffData({fetchAllStaff: true});
   const { toast } = useToast()
 
   // Get days of the week
@@ -62,16 +60,24 @@ export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityPro
   const handleEditSchedule = (staff: Staff, day: string) => {
     setSelectedStaff(staff)
     setEditingDay(day)
-    setEditingShift(staff.availability?.[day] || "off")
+    // Get current shift for day - check in recurring schedule
+    const dayLower = day.toLowerCase() as keyof typeof staff.availability.recurring
+    setEditingShift(staff.availability?.recurring?.[dayLower] || "off")
     setIsEditScheduleOpen(true)
   }
 
   const handleSaveSchedule = () => {
     if (!selectedStaff || !editingDay) return
 
+    const dayLower = editingDay.toLowerCase() as keyof typeof selectedStaff.availability.recurring
+    
+    // Create updated availability with new recurring schedule
     const updatedAvailability = {
       ...selectedStaff.availability,
-      [editingDay]: editingShift,
+      recurring: {
+        ...selectedStaff.availability.recurring,
+        [dayLower]: editingShift
+      }
     }
 
     const updatedStaff = {
@@ -79,7 +85,7 @@ export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityPro
       availability: updatedAvailability,
     }
 
-    onStaffUpdate(updatedStaff)
+    handleStaffUpdate(updatedStaff, selectedStaff.id, updatedAvailability)
 
     toast({
       title: "Schedule Updated",
@@ -110,9 +116,21 @@ export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityPro
         return <Badge variant="outline">{shift}</Badge>
     }
   }
+  
+  const getShiftForDate = (staff: Staff, date: Date) => {
+    // Check if there's an override for this specific date
+    const dateString = format(date, "yyyy-MM-dd");
+    if (staff.availability?.overrides?.[dateString]) {
+      return staff.availability.overrides[dateString];
+    }
+    
+    // Otherwise use the recurring schedule
+    const dayName = format(date, "EEEE").toLowerCase() as keyof typeof staff.availability.recurring;
+    return staff.availability?.recurring?.[dayName] || "off";
+  };
 
   // Filter active staff
-  const activeStaff = staff.filter((s) => s.status === "active")
+  const activeStaff = staffData.filter((s) => s.status.toLowerCase() === "active")
 
   return (
     <div className="space-y-6">
@@ -166,7 +184,7 @@ export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityPro
                         <div className="text-sm text-muted-foreground">{staffMember.role}</div>
                       </td>
                       {daysOfWeek.map((day) => {
-                        const shift = staffMember.availability?.[day.dayName.toLowerCase()] || "off"
+                        const shift = getShiftForDate(staffMember, day.date);
                         return (
                           <td key={day.dayName} className="p-2 text-center">
                             <div className="flex flex-col items-center gap-1">
@@ -213,7 +231,7 @@ export function StaffAvailability({ staff, onStaffUpdate }: StaffAvailabilityPro
                 <Clock className="h-4 w-4 text-muted-foreground" />
                 <span className="font-medium">Shift:</span>
               </div>
-              <Select value={editingShift} onValueChange={setEditingShift}>
+              <Select value={editingShift} onValueChange={setEditingShift as (value: string) => void}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select shift" />
                 </SelectTrigger>

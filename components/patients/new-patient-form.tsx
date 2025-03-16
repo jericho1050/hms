@@ -172,9 +172,6 @@ export function NewPatientForm({
     setIsSubmitting(true);
 
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      onSubmit(data);
       form.reset();
       setStep(1);
     } catch (error) {

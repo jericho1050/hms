@@ -17,27 +17,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from "lucide-react"
+import { Loader2, ArrowLeft, ArrowRight, Check, AlertCircle } from "lucide-react"
 import type { Staff } from "@/types/staff"
+import { useToast } from "@/hooks/use-toast"
 
-// Form schema
-const staffFormSchema = z.object({
+// Step validation schemas
+const personalInfoSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
   lastName: z.string().min(2, "Last name must be at least 2 characters"),
-  role: z.string().min(1, "Role is required"),
-  department: z.string().min(1, "Department is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 characters"),
   address: z.string().min(5, "Address must be at least 5 characters"),
+});
+
+const employmentDetailsSchema = z.object({
+  role: z.string().min(1, "Role is required"),
+  department: z.string().min(1, "Department is required"),
   joiningDate: z.string().min(1, "Joining date is required"),
   status: z.string().min(1, "Status is required"),
+});
+
+const professionalQualificationsSchema = z.object({
+  qualification: z.string().optional(),
   licenseNumber: z.string().optional(),
   specialty: z.string().optional(),
-  qualification: z.string().optional(),
-})
+});
 
-type StaffFormValues = z.infer<typeof staffFormSchema>
+// Complete form schema
+const staffFormSchema = personalInfoSchema.merge(employmentDetailsSchema).merge(professionalQualificationsSchema);
+
+export type StaffFormValues = z.infer<typeof staffFormSchema>
 
 interface NewStaffFormProps {
   isOpen: boolean
@@ -49,6 +58,9 @@ interface NewStaffFormProps {
 
 export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: NewStaffFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [currentStep, setCurrentStep] = useState(0)
+  const steps = ["Personal Information", "Employment Details", "Professional Qualifications"]
+  const { toast } = useToast()
 
   // Initialize the form
   const form = useForm<StaffFormValues>({
@@ -67,6 +79,7 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
       specialty: "",
       qualification: "",
     },
+    mode: "onChange", // Validate on change for better UX
   })
 
   // Handle form submission
@@ -74,9 +87,6 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
     setIsSubmitting(true)
 
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
       // Prepare data for submission
       const staffData = {
         ...data,
@@ -92,11 +102,86 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
       }
 
       onSubmit(staffData)
+      
+      // Show success toast
+      toast({
+        title: "Staff Added",
+        description: `${data.firstName} ${data.lastName} has been successfully added to the staff.`,
+        variant: "default",
+      })
+      
       form.reset()
+      setCurrentStep(0)
+      onClose() // Close the dialog after successful submission
     } catch (error) {
       console.error("Error creating staff:", error)
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to add staff member. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  // Validation schemas for each step
+  const stepSchemas = [
+    personalInfoSchema,
+    employmentDetailsSchema,
+    professionalQualificationsSchema
+  ];
+
+  // Get field names for each step
+  const stepFields = [
+    ["firstName", "lastName", "email", "phone", "address"],
+    ["role", "department", "joiningDate", "status"],
+    ["qualification", "licenseNumber", "specialty"]
+  ];
+
+  const validateCurrentStep = async () => {
+    const currentSchema = stepSchemas[currentStep];
+    const currentFields = stepFields[currentStep];
+    
+    // Extract current step values
+    const currentValues = {} as any;
+    currentFields.forEach(field => {
+      currentValues[field] = form.getValues(field as any);
+    });
+    
+    try {
+      // Validate current step's fields
+      await currentSchema.parseAsync(currentValues);
+      return true;
+    } catch (error) {
+      // Trigger validation for all fields in current step
+      currentFields.forEach(field => {
+        form.trigger(field as any);
+      });
+      
+      // Show error toast
+      toast({
+        title: "Validation Error",
+        description: "Please fix the errors before proceeding.",
+        variant: "destructive",
+      });
+      
+      return false;
+    }
+  }
+
+  const nextStep = async () => {
+    const isValid = await validateCurrentStep();
+    
+    if (isValid && currentStep < steps.length - 1) {
+      setCurrentStep(prev => prev + 1);
+    }
+  }
+
+  const prevStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(prev => prev - 1);
     }
   }
 
@@ -108,16 +193,40 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
           <DialogDescription>Fill out the form below to add a new staff member.</DialogDescription>
         </DialogHeader>
 
+        {/* Stepper Header */}
+        <div className="mb-6">
+          <div className="flex justify-between relative mb-4">
+            {steps.map((step, index) => (
+              <div key={index} className="flex flex-col items-center z-10">
+                <div 
+                  className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${
+                    index < currentStep ? "bg-green-500 border-green-500 text-white" :
+                    index === currentStep ? "bg-primary border border-muted-foreground text-white" :
+                    "bg-white border-gray-300 text-gray-400"
+                  }`}
+                >
+                  {index < currentStep ? <Check className="h-4 w-4" /> : index + 1}
+                </div>
+                <span className={`text-xs mt-1 ${index === currentStep ? "font-semibold" : "text-gray-500"}`}>
+                  {step}
+                </span>
+              </div>
+            ))}
+            {/* Progress line */}
+            <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200">
+              <div 
+                className="h-full bg-primary/10 transition-all duration-300" 
+                style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
-            <Tabs defaultValue="personal" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="personal">Personal</TabsTrigger>
-                <TabsTrigger value="employment">Employment</TabsTrigger>
-                <TabsTrigger value="professional">Professional</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="personal" className="space-y-4 mt-4">
+            {/* Step 1: Personal Information */}
+            {currentStep === 0 && (
+              <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -188,9 +297,12 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
                     </FormItem>
                   )}
                 />
-              </TabsContent>
+              </div>
+            )}
 
-              <TabsContent value="employment" className="space-y-4 mt-4">
+            {/* Step 2: Employment Details */}
+            {currentStep === 1 && (
+              <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -306,9 +418,12 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
                     </FormItem>
                   )}
                 />
-              </TabsContent>
+              </div>
+            )}
 
-              <TabsContent value="professional" className="space-y-4 mt-4">
+            {/* Step 3: Professional Qualifications */}
+            {currentStep === 2 && (
+              <div className="space-y-4">
                 <FormField
                   control={form.control}
                   name="qualification"
@@ -355,22 +470,50 @@ export function NewStaffForm({ isOpen, onClose, onSubmit, departments, roles }: 
                     />
                   </>
                 )}
-              </TabsContent>
-            </Tabs>
+              </div>
+            )}
 
+            {/* Navigation buttons */}
+            <div className="flex justify-between mt-6">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={prevStep}
+                disabled={currentStep === 0}
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Back
+              </Button>
+              
+              {currentStep < steps.length - 1 ? (
+                <Button type="button" onClick={nextStep}>
+                  Next <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button type="button" disabled={isSubmitting} onClick={()=> {
+
+                    if (
+                      confirm(
+                        'Are you sure you want to submit this staff information?'
+                      )
+                    ) {
+                      form.handleSubmit(handleFormSubmit)();
+                    }
+                }}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Adding Staff...
+                    </>
+                  ) : (
+                    "Add Staff"
+                  )}
+                </Button>
+              )}
+            </div>
+            
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding Staff...
-                  </>
-                ) : (
-                  "Add Staff"
-                )}
               </Button>
             </DialogFooter>
           </form>

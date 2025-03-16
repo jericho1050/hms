@@ -1,4 +1,4 @@
-import type { Staff } from "@/types/staff"
+import type { Staff } from "@/types/staff";
 
 export const mockStaffData: Staff[] = [
   {
@@ -16,13 +16,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Interventional Cardiology",
     qualification: "MD, aPhD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -40,13 +43,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Neurological Surgery",
     qualification: "MD",
     availability: {
-      monday: "afternoon",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -64,13 +70,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Diabetes Management",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -88,13 +97,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Cosmetic Dermatology",
     qualification: "MD",
     availability: {
-      monday: "afternoon",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -112,13 +124,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Child Psychiatry",
     qualification: "MD, PhD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -136,13 +151,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Sports Medicine",
     qualification: "MD",
     availability: {
-      monday: "afternoon",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -160,13 +178,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Reproductive Endocrinology",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -184,13 +205,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Respiratory Care",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -208,13 +232,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Retinal Surgery",
     qualification: "MD",
     availability: {
-      monday: "afternoon",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -232,13 +259,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Kidney Transplant",
     qualification: "MD, PhD",
     availability: {
-      monday: "off",
-      tuesday: "off",
-      wednesday: "off",
-      thursday: "off",
-      friday: "off",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "off",
+        tuesday: "off",
+        wednesday: "off",
+        thursday: "off",
+        friday: "off",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -256,13 +286,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Hepatology",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -280,13 +313,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Urologic Oncology",
     qualification: "MD",
     availability: {
-      monday: "afternoon",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -304,13 +340,16 @@ export const mockStaffData: Staff[] = [
     specialty: "Autoimmune Disorders",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -326,13 +365,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -348,13 +390,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "night",
-      tuesday: "night",
-      wednesday: "off",
-      thursday: "off",
-      friday: "night",
-      saturday: "night",
-      sunday: "night",
+      recurring: {
+        monday: "night",
+        tuesday: "night",
+        wednesday: "off",
+        thursday: "off",
+        friday: "night",
+        saturday: "night",
+        sunday: "night",
+      },
+      overrides: {},
     },
   },
   {
@@ -370,13 +415,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -392,13 +440,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -414,13 +465,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "afternoon",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -436,13 +490,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -458,13 +515,16 @@ export const mockStaffData: Staff[] = [
     status: "inactive",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -480,13 +540,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BS Medical Technology",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "morning",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "morning",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -502,13 +565,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BS Medical Technology",
     availability: {
-      monday: "afternoon",
-      tuesday: "afternoon",
-      wednesday: "afternoon",
-      thursday: "afternoon",
-      friday: "afternoon",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "afternoon",
+        wednesday: "afternoon",
+        thursday: "afternoon",
+        friday: "afternoon",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -524,13 +590,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "PharmD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -546,13 +615,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "PharmD",
     availability: {
-      monday: "afternoon",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -568,13 +640,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BA",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "morning",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "morning",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -590,16 +665,18 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BA",
     availability: {
-      monday: "afternoon",
-      tuesday: "afternoon",
-      wednesday: "afternoon",
-      thursday: "afternoon",
-      friday: "afternoon",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "afternoon",
+        tuesday: "afternoon",
+        wednesday: "afternoon",
+        thursday: "afternoon",
+        friday: "afternoon",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-  // Additional staff members to reach 64 total
   {
     id: "S-027",
     firstName: "William",
@@ -613,13 +690,16 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "MBA",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "morning",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "morning",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
   {
@@ -635,16 +715,18 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "MBA",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "morning",
-      thursday: "morning",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "morning",
+        thursday: "morning",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-  // Continue with more staff members to reach 64 total
   {
     id: "S-029",
     firstName: "Joseph",
@@ -658,16 +740,18 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "night",
-      tuesday: "night",
-      wednesday: "off",
-      thursday: "off",
-      friday: "night",
-      saturday: "night",
-      sunday: "off",
+      recurring: {
+        monday: "night",
+        tuesday: "night",
+        wednesday: "off",
+        thursday: "off",
+        friday: "night",
+        saturday: "night",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-  // Add more staff to reach 64 total
   {
     id: "S-030",
     firstName: "Nancy",
@@ -681,16 +765,18 @@ export const mockStaffData: Staff[] = [
     status: "active",
     qualification: "BSN, RN",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-  // Continue with more staff members
   {
     id: "S-031",
     firstName: "Charles",
@@ -706,16 +792,18 @@ export const mockStaffData: Staff[] = [
     specialty: "Diagnostic Radiology",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "afternoon",
-      wednesday: "morning",
-      thursday: "afternoon",
-      friday: "morning",
-      saturday: "off",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "afternoon",
+        wednesday: "morning",
+        thursday: "afternoon",
+        friday: "morning",
+        saturday: "off",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-  // Continue with more staff members
   {
     id: "S-032",
     firstName: "Margaret",
@@ -731,20 +819,23 @@ export const mockStaffData: Staff[] = [
     specialty: "Pediatric Cardiology",
     qualification: "MD",
     availability: {
-      monday: "morning",
-      tuesday: "morning",
-      wednesday: "afternoon",
-      thursday: "morning",
-      friday: "afternoon",
-      saturday: "morning",
-      sunday: "off",
+      recurring: {
+        monday: "morning",
+        tuesday: "morning",
+        wednesday: "afternoon",
+        thursday: "morning",
+        friday: "afternoon",
+        saturday: "morning",
+        sunday: "off",
+      },
+      overrides: {},
     },
   },
-]
+];
 
 // Add more staff members to reach 64 total
 for (let i = 33; i <= 64; i++) {
-  const roles = ["Doctor", "Nurse", "Lab Technician", "Pharmacist", "Receptionist", "Administrator"]
+  const roles = ["Doctor", "Nurse", "Lab Technician", "Pharmacist", "Receptionist", "Administrator"];
   const departments = [
     "Cardiology",
     "Neurology",
@@ -757,13 +848,13 @@ for (let i = 33; i <= 64; i++) {
     "Administration",
     "Pharmacy",
     "Laboratory",
-  ]
-  const statuses = ["active", "active", "active", "active", "inactive", "on-leave"] // Weighted for more active staff
-  const shifts = ["morning", "afternoon", "night", "off"]
+  ];
+  const statuses = ["active", "active", "active", "active", "inactive", "on-leave"]; // Weighted for more active staff
+  const shifts = ["morning", "afternoon", "night", "off"];
 
-  const role = roles[Math.floor(Math.random() * roles.length)]
-  const department = departments[Math.floor(Math.random() * departments.length)]
-  const status = statuses[Math.floor(Math.random() * statuses.length)]
+  const role = roles[Math.floor(Math.random() * roles.length)];
+  const department = departments[Math.floor(Math.random() * departments.length)];
+  const status = statuses[Math.floor(Math.random() * statuses.length)];
 
   const firstNames = [
     "John",
@@ -782,7 +873,7 @@ for (let i = 33; i <= 64; i++) {
     "Patricia",
     "Christopher",
     "Jennifer",
-  ]
+  ];
   const lastNames = [
     "Smith",
     "Johnson",
@@ -800,41 +891,44 @@ for (let i = 33; i <= 64; i++) {
     "White",
     "Harris",
     "Martin",
-  ]
+  ];
 
-  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
-  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
+  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
 
-  const availability: Record<string, string> = {}
-  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
+  // const availability: Record<string, any> = {
+  //   recurring: {},
+  //   overrides: {},
+  // };
+  // const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
-  days.forEach((day) => {
-    availability[day] =
-      day === "saturday" || day === "sunday"
-        ? Math.random() > 0.7
-          ? shifts[Math.floor(Math.random() * 3)]
-          : "off"
-        : shifts[Math.floor(Math.random() * 3)]
-  })
+  // days.forEach((day) => {
+  //   availability.recurring[day] =
+  //     day === "saturday" || day === "sunday"
+  //       ? Math.random() > 0.7
+  //         ? shifts[Math.floor(Math.random() * 3)]
+  //         : "off"
+  //       : shifts[Math.floor(Math.random() * 3)];
+  // });
 
-  mockStaffData.push({
-    id: `S-${i.toString().padStart(3, "0")}`,
-    firstName,
-    lastName,
-    role,
-    department,
-    email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@caresanar.com`,
-    phone: `(555) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
-    address: `${Math.floor(Math.random() * 999) + 1} ${["Main", "Oak", "Pine", "Maple", "Cedar"][Math.floor(Math.random() * 5)]} ${["St", "Ave", "Blvd", "Dr", "Ln"][Math.floor(Math.random() * 5)]}, ${["New York", "Chicago", "Los Angeles", "Houston", "Phoenix"][Math.floor(Math.random() * 5)]}`,
-    joiningDate: `${2017 + Math.floor(Math.random() * 4)}-${(Math.floor(Math.random() * 12) + 1).toString().padStart(2, "0")}-${(Math.floor(Math.random() * 28) + 1).toString().padStart(2, "0")}`,
-    status,
-    licenseNumber: role === "Doctor" ? `MD${Math.floor(Math.random() * 90000) + 10000}` : undefined,
-    specialty:
-      role === "Doctor"
-        ? `${["General", "Clinical", "Surgical", "Pediatric", "Geriatric"][Math.floor(Math.random() * 5)]} ${department}`
-        : undefined,
-    qualification: role === "Doctor" ? "MD" : role === "Nurse" ? "BSN, RN" : role === "Pharmacist" ? "PharmD" : "BA",
-    availability,
-  })
+  // mockStaffData.push({
+  //   id: `S-${i.toString().padStart(3, "0")}`,
+  //   firstName,
+  //   lastName,
+  //   role,
+  //   department,
+  //   email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@caresanar.com`,
+  //   phone: `(555) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
+  //   address: `${Math.floor(Math.random() * 999) + 1} ${["Main", "Oak", "Pine", "Maple", "Cedar"][Math.floor(Math.random() * 5)]} ${["St", "Ave", "Blvd", "Dr", "Ln"][Math.floor(Math.random() * 5)]}, ${["New York", "Chicago", "Los Angeles", "Houston", "Phoenix"][Math.floor(Math.random() * 5)]}`,
+  //   joiningDate: `${2017 + Math.floor(Math.random() * 4)}-${(Math.floor(Math.random() * 12) + 1).toString().padStart(2, "0")}-${(Math.floor(Math.random() * 28) + 1).toString().padStart(2, "0")}`,
+  //   status,
+  //   licenseNumber: role === "Doctor" ? `MD${Math.floor(Math.random() * 90000) + 10000}` : undefined,
+  //   specialty:
+  //     role === "Doctor"
+  //       ? `${["General", "Clinical", "Surgical", "Pediatric", "Geriatric"][Math.floor(Math.random() * 5)]} ${department}`
+  //       : undefined,
+  //   qualification: role === "Doctor" ? "MD" : role === "Nurse" ? "BSN, RN" : role === "Pharmacist" ? "PharmD" : "BA",
+  //   availability,
+  // });
 }
 

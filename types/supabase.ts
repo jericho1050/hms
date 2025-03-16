@@ -321,6 +321,7 @@ export type Database = {
           policy_holder_name: string | null
           relationship_to_patient: string | null
           state: string | null
+          status: string
           updated_at: string
           zip_code: string | null
         }
@@ -352,6 +353,7 @@ export type Database = {
           policy_holder_name?: string | null
           relationship_to_patient?: string | null
           state?: string | null
+          status?: string
           updated_at?: string
           zip_code?: string | null
         }
@@ -383,6 +385,7 @@ export type Database = {
           policy_holder_name?: string | null
           relationship_to_patient?: string | null
           state?: string | null
+          status?: string
           updated_at?: string
           zip_code?: string | null
         }
@@ -435,6 +438,7 @@ export type Database = {
       staff: {
         Row: {
           address: string | null
+          availability: Json | null
           contact_number: string
           created_at: string
           department: string
@@ -449,10 +453,11 @@ export type Database = {
           specialty: string | null
           status: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           address?: string | null
+          availability?: Json | null
           contact_number: string
           created_at?: string
           department: string
@@ -467,10 +472,11 @@ export type Database = {
           specialty?: string | null
           status: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           address?: string | null
+          availability?: Json | null
           contact_number?: string
           created_at?: string
           department?: string
@@ -485,7 +491,7 @@ export type Database = {
           specialty?: string | null
           status?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

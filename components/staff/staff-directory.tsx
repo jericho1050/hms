@@ -22,12 +22,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreVertical, Eye, Edit, UserX, Mail, Phone, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
+import { MoreVertical, Eye, Edit, UserX, Mail, Phone, Calendar, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { EditStaffForm } from "./edit-staff-form"
 import { StaffProfile } from "@/components/staff/staff-profile"
 import type { Staff } from "@/types/staff"
 import { useToast } from "@/hooks/use-toast"
-import { useStaffData } from "@/hooks/use-staff"
 import {
   Select,
   SelectContent,
@@ -35,48 +34,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { memo } from "react"
+import { PaginationState } from "@/types/form-staff"
+import { useStaffData } from "@/hooks/use-staff"
+// Add missing imports
+import { useEffect } from "react"
+import { Input } from "@/components/ui/input"
+import { Search, Filter, RefreshCw, Loader2 } from "lucide-react"
 
 interface StaffDirectoryProps {
-  searchQuery: string;
-  departmentFilter: string;
-  roleFilter: string;
-  statusFilter: string;
+  staff: Staff[]
+  onStaffUpdate: (updatedStaff: Staff) => void
+  pagination?: PaginationState
+  changePage?: (page: number) => void
+  changePageSize?: (pageSize: number) => void
+}
+interface StandaloneStaffDirectoryProps {
+  initialSearchQuery?: string
+  initialDepartmentFilter?: string
+  initialRoleFilter?: string
+  initialStatusFilter?: string
+  onStaffUpdate?: (staff: Staff) => void
 }
 
 export function StaffDirectory({ 
-  searchQuery,
-  departmentFilter,
-  roleFilter,
-  statusFilter,
+  staff, 
+  onStaffUpdate, 
+  pagination, 
+  changePage, 
+  changePageSize 
 }: StaffDirectoryProps) {
-  
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false)
   const { toast } = useToast()
-  
-  // Use the hook within the component to encapsulate all staff data and pagination functionality
-  const { 
-    filteredStaff: staff, 
-    stats, 
-    departments, 
-    roles, 
-    isLoading, 
-    handleRefresh,
-    handleNewStaffSubmit,
-    handleStaffUpdate,
-    pagination,
-    changePage,
-    changePageSize,
-    filterStaff
-  } = useStaffData({
-    searchQuery,
-    departmentFilter,
-    roleFilter,
-    statusFilter,
-  })
 
   const handleViewStaff = (staff: Staff) => {
     setSelectedStaff(staff)
@@ -101,7 +92,7 @@ export function StaffDirectory({
       status: selectedStaff.status === "active" ? "inactive" : "active",
     }
 
-    handleStaffUpdate(updatedStaff)
+    onStaffUpdate(updatedStaff)
 
     toast({
       title: `Staff ${updatedStaff.status === "active" ? "Activated" : "Deactivated"}`,
@@ -133,14 +124,6 @@ export function StaffDirectory({
     }
   }
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-48">
-        <AlertCircle className="h-8 w-8 mb-2 animate-spin text-primary" />
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -157,8 +140,8 @@ export function StaffDirectory({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {staff && staff.length > 0 ? (
-              staff.map((staffMember: Staff) => (
+            {staff.length > 0 ? (
+              staff.map((staffMember) => (
                 <TableRow key={staffMember.id}>
                   <TableCell className="font-medium">
                     {staffMember.firstName} {staffMember.lastName}
@@ -179,6 +162,7 @@ export function StaffDirectory({
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
+                      {/* <Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground" /> */}
                       <span className="text-[0.65em] font-medium">{staffMember.joiningDate}</span>
                     </div>
                   </TableCell>
@@ -230,7 +214,7 @@ export function StaffDirectory({
       </div>
 
       {/* Pagination Controls */}
-      {pagination && (
+      {pagination && changePage && changePageSize && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
             Showing {staff && staff.length > 0 ? pagination.currentPage * pagination.pageSize + 1 : 0} to{" "}
@@ -264,14 +248,14 @@ export function StaffDirectory({
                 <span className="sr-only">Previous page</span>
               </Button>
               <div className="text-sm">
-                Page {pagination.currentPage + 1} of {pagination.totalPages}
+                Page {pagination.currentPage + 1} of {pagination.totalPages || 1}
               </div>
               <Button
                 variant="outline"
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => changePage(pagination.currentPage + 1)}
-                disabled={pagination.currentPage === pagination.totalPages - 1}
+                disabled={pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0}
               >
                 <ChevronRight className="h-4 w-4" />
                 <span className="sr-only">Next page</span>
@@ -292,7 +276,7 @@ export function StaffDirectory({
           staff={selectedStaff}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSubmit={handleStaffUpdate}
+          onSubmit={onStaffUpdate}
         />
       )}
 
@@ -328,5 +312,143 @@ export function StaffDirectory({
   )
 }
 
-// Export a memoized version of the component to prevent unnecessary re-renders
-export const MemoizedStaffDirectory = memo(StaffDirectory);
+// Create a stand-alone version of StaffDirectory with its own state managemen
+
+export function StandaloneStaffDirectory({
+  initialSearchQuery = '',
+  initialDepartmentFilter = 'all',
+  initialRoleFilter = 'all',
+  initialStatusFilter = 'all',
+  onStaffUpdate,
+}: StandaloneStaffDirectoryProps) {
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
+  const [departmentFilter, setDepartmentFilter] = useState(initialDepartmentFilter)
+  const [roleFilter, setRoleFilter] = useState(initialRoleFilter)
+  const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
+
+  // Use the custom hook to manage staff data
+  const {
+    filteredStaff,
+    stats,
+    departments,
+    roles,
+    isLoading,
+    handleRefresh,
+    handleStaffUpdate,
+    pagination,
+    changePage,
+    changePageSize,
+    filterStaff
+  } = useStaffData({
+    searchQuery,
+    departmentFilter,
+    roleFilter,
+    statusFilter,
+  })
+
+  // Apply filters when they change
+  useEffect(() => {
+    filterStaff(searchQuery, departmentFilter, roleFilter, statusFilter)
+  }, [searchQuery, departmentFilter, roleFilter, statusFilter, filterStaff])
+
+  const handleStaffUpdateWrapper = (staff: Staff) => {
+    handleStaffUpdate(staff)
+    if (onStaffUpdate) {
+      onStaffUpdate(staff)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Search and Filters */}
+      <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+        <div className="relative w-full md:w-96">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search staff..."
+            className="pl-8"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={departmentFilter}
+              onValueChange={setDepartmentFilter}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((department) => (
+                  <SelectItem key={department} value={department.toLowerCase()}>
+                    {department}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Role" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                {roles.map((role) => (
+                  <SelectItem key={role} value={role.toLowerCase()}>
+                    {role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-auto">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="on-leave">On Leave</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isLoading}
+          >
+            <RefreshCw
+              className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+            />
+          </Button>
+        </div>
+      </div>
+
+      {/* Staff Directory Table */}
+      <StaffDirectory
+        staff={filteredStaff}
+        onStaffUpdate={handleStaffUpdateWrapper}
+        pagination={pagination}
+        changePage={changePage}
+        changePageSize={changePageSize}
+      />
+    </div>
+  )
+}
+
