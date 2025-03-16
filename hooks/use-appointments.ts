@@ -25,6 +25,7 @@ export function useAppointments() {
         .select('*');
       if (error) throw error;
 
+      console.log('Fetched appointments:', appointmentsData);
       if (appointmentsData) {
         const formattedAppointments = appointmentsData.map((app) => ({
           id: app.id || '',
