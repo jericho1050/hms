@@ -22,23 +22,61 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { MoreVertical, Eye, Edit, UserX, Mail, Phone, Calendar, AlertCircle } from "lucide-react"
+import { MoreVertical, Eye, Edit, UserX, Mail, Phone, AlertCircle, ChevronLeft, ChevronRight } from "lucide-react"
 import { EditStaffForm } from "./edit-staff-form"
 import { StaffProfile } from "@/components/staff/staff-profile"
 import type { Staff } from "@/types/staff"
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast"
+import { useStaffData } from "@/hooks/use-staff"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { memo } from "react"
 
 interface StaffDirectoryProps {
-  staff: Staff[]
-  onStaffUpdate: (updatedStaff: Staff) => void
+  searchQuery: string;
+  departmentFilter: string;
+  roleFilter: string;
+  statusFilter: string;
 }
 
-export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
+export function StaffDirectory({ 
+  searchQuery,
+  departmentFilter,
+  roleFilter,
+  statusFilter,
+}: StaffDirectoryProps) {
+  
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isDeactivateDialogOpen, setIsDeactivateDialogOpen] = useState(false)
   const { toast } = useToast()
+  
+  // Use the hook within the component to encapsulate all staff data and pagination functionality
+  const { 
+    filteredStaff: staff, 
+    stats, 
+    departments, 
+    roles, 
+    isLoading, 
+    handleRefresh,
+    handleNewStaffSubmit,
+    handleStaffUpdate,
+    pagination,
+    changePage,
+    changePageSize,
+    filterStaff
+  } = useStaffData({
+    searchQuery,
+    departmentFilter,
+    roleFilter,
+    statusFilter,
+  })
 
   const handleViewStaff = (staff: Staff) => {
     setSelectedStaff(staff)
@@ -63,7 +101,7 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
       status: selectedStaff.status === "active" ? "inactive" : "active",
     }
 
-    onStaffUpdate(updatedStaff)
+    handleStaffUpdate(updatedStaff)
 
     toast({
       title: `Staff ${updatedStaff.status === "active" ? "Activated" : "Deactivated"}`,
@@ -95,6 +133,14 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-48">
+        <AlertCircle className="h-8 w-8 mb-2 animate-spin text-primary" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
       <div className="rounded-md border">
@@ -111,8 +157,8 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {staff.length > 0 ? (
-              staff.map((staffMember) => (
+            {staff && staff.length > 0 ? (
+              staff.map((staffMember: Staff) => (
                 <TableRow key={staffMember.id}>
                   <TableCell className="font-medium">
                     {staffMember.firstName} {staffMember.lastName}
@@ -133,8 +179,7 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <Calendar className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
-                      <span>{staffMember.joiningDate}</span>
+                      <span className="text-[0.65em] font-medium">{staffMember.joiningDate}</span>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(staffMember.status)}</TableCell>
@@ -184,6 +229,58 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
         </Table>
       </div>
 
+      {/* Pagination Controls */}
+      {pagination && (
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-muted-foreground">
+            Showing {staff && staff.length > 0 ? pagination.currentPage * pagination.pageSize + 1 : 0} to{" "}
+            {Math.min((pagination.currentPage + 1) * pagination.pageSize, pagination.totalCount)} of{" "}
+            {pagination.totalCount} staff members
+          </div>
+          <div className="flex items-center space-x-2">
+            <Select 
+              value={pagination.pageSize.toString()} 
+              onValueChange={(value) => changePageSize(parseInt(value))}
+            >
+              <SelectTrigger className="h-8 w-[70px]">
+                <SelectValue placeholder={pagination.pageSize.toString()} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+                <SelectItem value="50">50</SelectItem>
+              </SelectContent>
+            </Select>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => changePage(pagination.currentPage - 1)}
+                disabled={pagination.currentPage === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                <span className="sr-only">Previous page</span>
+              </Button>
+              <div className="text-sm">
+                Page {pagination.currentPage + 1} of {pagination.totalPages}
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => changePage(pagination.currentPage + 1)}
+                disabled={pagination.currentPage === pagination.totalPages - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+                <span className="sr-only">Next page</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Staff Profile */}
       {selectedStaff && (
         <StaffProfile staff={selectedStaff} isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} />
@@ -195,7 +292,7 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
           staff={selectedStaff}
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSubmit={onStaffUpdate}
+          onSubmit={handleStaffUpdate}
         />
       )}
 
@@ -230,3 +327,6 @@ export function StaffDirectory({ staff, onStaffUpdate }: StaffDirectoryProps) {
     </div>
   )
 }
+
+// Export a memoized version of the component to prevent unnecessary re-renders
+export const MemoizedStaffDirectory = memo(StaffDirectory);

@@ -1,7 +1,6 @@
 "use client"
 
-import type React from "react"
-
+import React from "react"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,148 +8,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { PlusCircle, Search, Filter, RefreshCw, Users, UserCheck, UserX, Briefcase, Loader2 } from "lucide-react"
-import { StaffDirectory } from "@/components/staff/staff-directory"
+import { StaffDirectory, MemoizedStaffDirectory } from "@/components/staff/staff-directory"
 import { StaffAvailability } from "@/components/staff/staff-availability"
 import { NewStaffForm } from "@/components/staff/new-staff-form"
-import { mockStaffData } from "@/lib/mock-staff"
-import type { Staff } from "@/types/staff"
+import { useStaffData } from "@/hooks/use-staff"
 
 export default function StaffManagementPage() {
-  const [isLoading, setIsLoading] = useState(true)
-  const [staffData, setStaffData] = useState<Staff[]>([])
-  const [filteredStaff, setFilteredStaff] = useState<Staff[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [departmentFilter, setDepartmentFilter] = useState<string>("all")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
   const [isNewStaffModalOpen, setIsNewStaffModalOpen] = useState(false)
 
-  // Stats for staff metrics
-  const [stats, setStats] = useState({
-    totalStaff: 0,
-    activeStaff: 0,
-    inactiveStaff: 0,
-    departmentBreakdown: {} as Record<string, number>,
-    roleBreakdown: {} as Record<string, number>,
+  // Use the custom hook to manage staff data - this is still needed for the StaffAvailability component
+  // and the stats at the top of the page
+  const { 
+    filteredStaff, 
+    stats, 
+    departments, 
+    roles, 
+    isLoading, 
+    handleRefresh,
+    handleNewStaffSubmit,
+    handleStaffUpdate
+  } = useStaffData({
+    searchQuery,
+    departmentFilter,
+    roleFilter,
+    statusFilter,
   })
-
-  // Fetch staff data (mock data for now)
-  useEffect(() => {
-    const fetchStaffData = async () => {
-      try {
-        // In a real app, this would be an API call
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setStaffData(mockStaffData)
-      } catch (error) {
-        console.error("Error fetching staff data:", error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    fetchStaffData()
-  }, [])
-
-  // Filter staff based on search query and filters
-  useEffect(() => {
-    let filtered = [...staffData]
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(
-        (staff) =>
-          staff.firstName.toLowerCase().includes(query) ||
-          staff.lastName.toLowerCase().includes(query) ||
-          staff.email.toLowerCase().includes(query) ||
-          staff.id.toLowerCase().includes(query),
-      )
-    }
-
-    // Apply department filter
-    if (departmentFilter !== "all") {
-      filtered = filtered.filter((staff) => staff.department.toLowerCase() === departmentFilter.toLowerCase())
-    }
-
-    // Apply role filter
-    if (roleFilter !== "all") {
-      filtered = filtered.filter((staff) => staff.role.toLowerCase() === roleFilter.toLowerCase())
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((staff) => staff.status.toLowerCase() === statusFilter.toLowerCase())
-    }
-
-    setFilteredStaff(filtered)
-
-    // Calculate stats
-    const activeStaff = staffData.filter((staff) => staff.status === "active").length
-    const inactiveStaff = staffData.filter((staff) => staff.status === "inactive").length
-
-    // Department breakdown
-    const departmentBreakdown: Record<string, number> = {}
-    staffData.forEach((staff) => {
-      departmentBreakdown[staff.department] = (departmentBreakdown[staff.department] || 0) + 1
-    })
-
-    // Role breakdown
-    const roleBreakdown: Record<string, number> = {}
-    staffData.forEach((staff) => {
-      roleBreakdown[staff.role] = (roleBreakdown[staff.role] || 0) + 1
-    })
-
-    setStats({
-      totalStaff: staffData.length,
-      activeStaff,
-      inactiveStaff,
-      departmentBreakdown,
-      roleBreakdown,
-    })
-  }, [staffData, searchQuery, departmentFilter, roleFilter, statusFilter])
-
-  // Get unique departments and roles for filters
-  const departments = Array.from(new Set(staffData.map((staff) => staff.department)))
-  const roles = Array.from(new Set(staffData.map((staff) => staff.role)))
-
-  // Handle refresh
-  const handleRefresh = async () => {
-    setIsLoading(true)
-    // In a real app, this would fetch fresh data from the API
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-  }
-
-  // Handle new staff submission
-  const handleNewStaffSubmit = (newStaffData: Partial<Staff>) => {
-    // In a real app, this would be an API call
-    const newStaff: Staff = {
-      id: `S-${Math.floor(Math.random() * 10000)}`,
-      firstName: newStaffData.firstName || "",
-      lastName: newStaffData.lastName || "",
-      role: newStaffData.role || "",
-      department: newStaffData.department || "",
-      email: newStaffData.email || "",
-      phone: newStaffData.phone || "",
-      address: newStaffData.address || "",
-      joiningDate: newStaffData.joiningDate || new Date().toISOString().split("T")[0],
-      status: "active",
-      licenseNumber: newStaffData.licenseNumber || "",
-      specialty: newStaffData.specialty || "",
-      qualification: newStaffData.qualification || "",
-      availability: newStaffData.availability || {},
-    }
-
-    setStaffData([...staffData, newStaff])
-    setIsNewStaffModalOpen(false)
-  }
-
-  // Handle staff update
-  const handleStaffUpdate = (updatedStaff: Staff) => {
-    const updatedStaffData = staffData.map((staff) => (staff.id === updatedStaff.id ? updatedStaff : staff))
-    setStaffData(updatedStaffData)
-  }
 
   if (isLoading) {
     return (
@@ -341,7 +227,12 @@ export default function StaffManagementPage() {
         </TabsList>
 
         <TabsContent value="directory" className="space-y-4">
-          <StaffDirectory staff={filteredStaff} onStaffUpdate={handleStaffUpdate} />
+          <MemoizedStaffDirectory 
+            searchQuery={searchQuery}
+            departmentFilter={departmentFilter}
+            roleFilter={roleFilter}
+            statusFilter={statusFilter}
+          />
         </TabsContent>
 
         <TabsContent value="availability" className="space-y-4">
@@ -353,7 +244,10 @@ export default function StaffManagementPage() {
       <NewStaffForm
         isOpen={isNewStaffModalOpen}
         onClose={() => setIsNewStaffModalOpen(false)}
-        onSubmit={handleNewStaffSubmit}
+        onSubmit={(data) => {
+          handleNewStaffSubmit(data);
+          setIsNewStaffModalOpen(false);
+        }}
         departments={departments}
         roles={roles}
       />
