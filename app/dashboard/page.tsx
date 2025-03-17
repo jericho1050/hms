@@ -60,8 +60,8 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/utils/supabase/client';
 import { Patient } from '@/types/patients';
 import Link from 'next/link';
-import { mapDbPatientToPatient } from '@/hooks/use-patient';
 import { useTheme } from 'next-themes';
+import { mapDbPatientToPatient } from '../actions/utils';
 
 export default function Dashboard() {
   // Load patient data with custom hook

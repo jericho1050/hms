@@ -172,8 +172,13 @@ export function NewPatientForm({
     setIsSubmitting(true);
 
     try {
+      // Call the onSubmit function passed from parent with the form data
+      onSubmit(data);
+      
+      // Reset form and close dialog on successful submission
       form.reset();
       setStep(1);
+      onClose();
     } catch (error) {
       console.error('Error submitting form:', error);
     } finally {
@@ -1045,18 +1050,8 @@ export function NewPatientForm({
                 </Button>
               ) : (
                 <Button
-                  type='button'
+                  type='submit'
                   disabled={isSubmitting}
-                  onClick={() => {
-                    // Add confirmation before submitting
-                    if (
-                      confirm(
-                        'Are you sure you want to submit this patient information?'
-                      )
-                    ) {
-                      form.handleSubmit(handleFormSubmit)();
-                    }
-                  }}
                 >
                   {isSubmitting ? (
                     <>
