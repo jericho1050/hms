@@ -139,6 +139,7 @@ export type Database = {
       }
       departments: {
         Row: {
+          color: string | null
           created_at: string
           current_utilization: number | null
           description: string | null
@@ -150,6 +151,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           current_utilization?: number | null
           description?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           current_utilization?: number | null
           description?: string | null
@@ -292,6 +295,77 @@ export type Database = {
           },
         ]
       }
+      patient_room_assignments: {
+        Row: {
+          admission_date: string
+          assigned_by: string
+          bed_number: number
+          created_at: string
+          discharge_date: string | null
+          id: string
+          notes: string | null
+          patient_id: string
+          room_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admission_date?: string
+          assigned_by: string
+          bed_number: number
+          created_at?: string
+          discharge_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id: string
+          room_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admission_date?: string
+          assigned_by?: string
+          bed_number?: number
+          created_at?: string
+          discharge_date?: string | null
+          id?: string
+          notes?: string | null
+          patient_id?: string
+          room_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_room_assignments_assigned_by_fkey"
+            columns: ["assigned_by"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_room_assignments_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_room_assignments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "room_occupancy_history"
+            referencedColumns: ["room_id"]
+          },
+          {
+            foreignKeyName: "patient_room_assignments_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string
@@ -393,37 +467,58 @@ export type Database = {
       }
       rooms: {
         Row: {
+          amenities: string[] | null
           capacity: number
+          cleaning_status: string | null
           created_at: string
           current_occupancy: number
           department_id: string | null
+          features: Json | null
+          floor: string | null
           id: string
+          is_isolation: boolean | null
+          last_cleaned: string | null
           room_number: string
           room_type: string
           status: string
           updated_at: string
+          wing: string | null
         }
         Insert: {
+          amenities?: string[] | null
           capacity: number
+          cleaning_status?: string | null
           created_at?: string
           current_occupancy?: number
           department_id?: string | null
+          features?: Json | null
+          floor?: string | null
           id?: string
+          is_isolation?: boolean | null
+          last_cleaned?: string | null
           room_number: string
           room_type: string
           status: string
           updated_at?: string
+          wing?: string | null
         }
         Update: {
+          amenities?: string[] | null
           capacity?: number
+          cleaning_status?: string | null
           created_at?: string
           current_occupancy?: number
           department_id?: string | null
+          features?: Json | null
+          floor?: string | null
           id?: string
+          is_isolation?: boolean | null
+          last_cleaned?: string | null
           room_number?: string
           room_type?: string
           status?: string
           updated_at?: string
+          wing?: string | null
         }
         Relationships: [
           {
@@ -560,8 +655,39 @@ export type Database = {
         }
         Relationships: []
       }
+      room_occupancy_history: {
+        Row: {
+          capacity: number | null
+          current_patients: number | null
+          date: string | null
+          department_id: string | null
+          department_name: string | null
+          occupancy_rate: number | null
+          patients_admitted: number | null
+          room_id: string | null
+          room_number: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rooms_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
+      assign_patient_to_room: {
+        Args: {
+          p_patient_id: string
+          p_room_id: string
+          p_bed_number: number
+          p_staff_id: string
+        }
+        Returns: string
+      }
       check_appointment_availability: {
         Args: {
           p_staff_id: string
@@ -571,9 +697,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      check_room_availability: {
+        Args: {
+          p_room_id: string
+        }
+        Returns: boolean
+      }
       check_user_in_staff: {
         Args: {
           user_id_param: string
+        }
+        Returns: boolean
+      }
+      discharge_patient_from_room: {
+        Args: {
+          p_assignment_id: string
         }
         Returns: boolean
       }
@@ -587,7 +725,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      staff_status: "active" | "inactive" | "on-leave"
     }
     CompositeTypes: {
       [_ in never]: never

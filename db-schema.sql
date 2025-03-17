@@ -120,6 +120,7 @@ CREATE TABLE public.departments (
   location text NULL,
   total_capacity integer NULL,
   current_utilization integer NULL,
+  color text,
   CONSTRAINT departments_pkey PRIMARY KEY (id),
   CONSTRAINT departments_head_staff_id_fkey FOREIGN KEY (head_staff_id) REFERENCES staff(id)
 ) TABLESPACE pg_default;
@@ -479,6 +480,27 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+CREATE OR REPLACE FUNCTION public.recalculate_room_occupancy()
+RETURNS void AS $$
+BEGIN
+  -- First, reset all rooms to 0 occupancy
+  UPDATE rooms SET current_occupancy = 0;
+  
+  -- Then recalculate based on current assignments
+  UPDATE rooms r
+  SET current_occupancy = COALESCE(count_occupied.occupied_count, 0)
+  FROM (
+    SELECT room_id, COUNT(*) as occupied_count 
+    FROM patient_room_assignments 
+    WHERE discharge_date IS NULL
+    GROUP BY room_id
+  ) count_occupied
+  WHERE r.id = count_occupied.room_id;
+  
+  -- The trigger will automatically update the status field
+END;
+$$ LANGUAGE plpgsql;
+
 ---------------------------------------------------------------------------
 
 --------------- Triggers ------------------------
@@ -500,3 +522,72 @@ WHEN (OLD.current_occupancy IS DISTINCT FROM NEW.current_occupancy)
 EXECUTE FUNCTION update_room_status();
 
 -------------------------------------------------
+
+
+----------------- RLS Policies ------------------
+
+CREATE POLICY "Admin can access all data" ON public.appointments
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.billing
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.departments
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.inventory
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.medical_records
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.patients
+FOR ALL
+TO authenticated
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Admin can access all data" ON public.patient_room_assignments
+FOR ALL
+TO public
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Staff can read data" ON public.appointments
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can read data" ON public.billing
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can read data" ON public.departments
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can read data" ON public.inventory
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can read data" ON public.medical_records
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can read data" ON public.patients
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
