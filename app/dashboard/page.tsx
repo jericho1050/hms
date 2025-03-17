@@ -61,9 +61,11 @@ import { supabase } from '@/utils/supabase/client';
 import { Patient } from '@/types/patients';
 import Link from 'next/link';
 import { mapDbPatientToPatient } from '@/hooks/use-patient';
+import { useTheme } from 'next-themes';
 
 export default function Dashboard() {
   // Load patient data with custom hook
+  
   const {
     patientAdmissionsData,
     fetchPatientAdmissions,
@@ -73,6 +75,13 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
   const [isLoadingPatients, setIsLoadingPatients] = useState(true);
+  const { resolvedTheme } = useTheme();
+
+  const tooltipStyle = {
+    backgroundColor: resolvedTheme === 'dark' ? '#2D3748' : '#ffffff',
+    color: resolvedTheme === 'dark' ? '#fff' : '#000',
+    border: 'none',
+  };
 
   // Load stats data with custom hook
   const {
@@ -250,13 +259,12 @@ export default function Dashboard() {
                         }
                       />
                       <YAxis />
-                      <Tooltip />
-                      <Bar
+                      <Tooltip contentStyle={tooltipStyle} />                       <Bar
                         dataKey='admissions'
                         fill='hsl(var(--primary))'
                         radius={[4, 4, 0, 0]}
                       />
-                    </BarChart>
+                    </BarChart> 
                   </ResponsiveContainer>
                 </CardContent>
               </Card>
@@ -272,8 +280,7 @@ export default function Dashboard() {
                     <LineChart data={departmentUtilizationData}>
                       <XAxis dataKey='department' />
                       <YAxis />
-                      <Tooltip />
-                      <Line
+                      <Tooltip contentStyle={tooltipStyle} />                       <Line
                         type='monotone'
                         dataKey='capacity'
                         stroke='hsl(var(--primary))'
