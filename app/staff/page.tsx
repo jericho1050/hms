@@ -31,7 +31,7 @@ export default function StaffManagementPage() {
     filteredStaff,
     filterStaff,
     handleNewStaffSubmit,
-  } = useStaffData({});
+  } = useStaffData();
 
   if (isLoading) {
     return (

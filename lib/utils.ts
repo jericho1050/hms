@@ -1,6 +1,7 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
-
+import { Staff } from "@/types/staff";
+import {format} from 'date-fns';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -17,3 +18,15 @@ export function formatCurrency(value: number, maximumFractionDigits: number = 0)
     maximumFractionDigits: validMaxFractionDigits,
   }).format(value);
 }
+
+export const getShiftForDate = (staff: Staff, date: Date) => {
+  // Check if there's an override for this specific date
+  const dateString = format(date, "yyyy-MM-dd");
+  if (staff.availability?.overrides?.[dateString]) {
+    return staff.availability.overrides[dateString];
+  }
+  
+  // Otherwise use the recurring schedule
+  const dayName = format(date, "EEEE").toLowerCase() as keyof typeof staff.availability.recurring;
+  return staff.availability?.recurring?.[dayName] || "off";
+};

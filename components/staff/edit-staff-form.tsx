@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { z } from "zod"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import type { Staff } from "@/types/staff"
 
 // Form schema
@@ -48,44 +49,93 @@ interface EditStaffFormProps {
 
 export function EditStaffForm({ staff, isOpen, onClose, onSubmit }: EditStaffFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [localStaff, setLocalStaff] = useState<Staff>(staff)
+  const { toast } = useToast()
+  
+  // Update local staff when the prop changes
+  useEffect(() => {
+    setLocalStaff(staff)
+  }, [staff])
 
   // Initialize the form with staff data
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
     defaultValues: {
-      firstName: staff.firstName,
-      lastName: staff.lastName,
-      role: staff.role,
-      department: staff.department,
-      email: staff.email,
-      phone: staff.phone,
-      address: staff.address,
-      joiningDate: staff.joiningDate,
-      status: staff.status,
-      licenseNumber: staff.licenseNumber || "",
-      specialty: staff.specialty || "",
-      qualification: staff.qualification || "",
+      firstName: localStaff.firstName,
+      lastName: localStaff.lastName,
+      role: localStaff.role,
+      department: localStaff.department,
+      email: localStaff.email,
+      phone: localStaff.phone,
+      address: localStaff.address,
+      joiningDate: localStaff.joiningDate,
+      status: localStaff.status,
+      licenseNumber: localStaff.licenseNumber || "",
+      specialty: localStaff.specialty || "",
+      qualification: localStaff.qualification || "",
     },
   })
 
-  // Handle form submission
+  // Reset form when staff changes
+  useEffect(() => {
+    form.reset({
+      firstName: localStaff.firstName,
+      lastName: localStaff.lastName,
+      role: localStaff.role,
+      department: localStaff.department,
+      email: localStaff.email,
+      phone: localStaff.phone,
+      address: localStaff.address,
+      joiningDate: localStaff.joiningDate,
+      status: localStaff.status,
+      licenseNumber: localStaff.licenseNumber || "",
+      specialty: localStaff.specialty || "",
+      qualification: localStaff.qualification || "",
+    })
+  }, [localStaff, form])
+
+  // Handle form submission with optimistic updates
   const handleFormSubmit = async (data: StaffFormValues) => {
     setIsSubmitting(true)
-
+    
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Combine form data with existing staff data
+      // Create updated staff object
       const updatedStaff: Staff = {
-        ...staff,
+        ...localStaff,
         ...data,
       }
-
-      onSubmit(updatedStaff)
+      
+      // Update local state immediately for optimistic UI
+      setLocalStaff(updatedStaff)
+      
+      // Close the dialog immediately to show the update in the list
       onClose()
+      
+      // Show success toast
+      toast({
+        title: "Staff updated",
+        description: `${updatedStaff.firstName} ${updatedStaff.lastName}'s information has been updated.`,
+        variant: "default",
+      })
+      
+      // Send update to parent component/server
+      onSubmit(updatedStaff)
     } catch (error) {
       console.error("Error updating staff:", error)
+      
+      // Show error toast
+      toast({
+        title: "Update failed",
+        description: "There was a problem updating the staff member. Please try again.",
+        variant: "destructive",
+      })
+      
+      // Reopen the dialog if there's an error
+      // This is optional - you might want to keep it closed anyway
+      // Uncomment if you want this behavior
+      // if (!isOpen) {
+      //   onClose()
+      // }
     } finally {
       setIsSubmitting(false)
     }
@@ -208,7 +258,6 @@ export function EditStaffForm({ staff, isOpen, onClose, onSubmit }: EditStaffFor
                       </FormItem>
                     )}
                   />
-
                   <FormField
                     control={form.control}
                     name="department"

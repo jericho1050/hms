@@ -18,7 +18,7 @@ import { ChevronLeft, ChevronRight, Calendar, Clock, Edit } from "lucide-react"
 import type { Staff, Schedule } from "@/types/staff"
 import { useToast } from "@/hooks/use-toast"
 import { useStaffData } from "@/hooks/use-staff"
-
+import { getShiftForDate } from "@/lib/utils"
 
 export function StaffAvailability() {
   const [currentWeek, setCurrentWeek] = useState<Date>(new Date())
@@ -117,17 +117,7 @@ export function StaffAvailability() {
     }
   }
   
-  const getShiftForDate = (staff: Staff, date: Date) => {
-    // Check if there's an override for this specific date
-    const dateString = format(date, "yyyy-MM-dd");
-    if (staff.availability?.overrides?.[dateString]) {
-      return staff.availability.overrides[dateString];
-    }
-    
-    // Otherwise use the recurring schedule
-    const dayName = format(date, "EEEE").toLowerCase() as keyof typeof staff.availability.recurring;
-    return staff.availability?.recurring?.[dayName] || "off";
-  };
+
 
   // Filter active staff
   const activeStaff = staffData.filter((s) => s.status.toLowerCase() === "active")

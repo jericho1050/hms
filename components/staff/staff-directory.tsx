@@ -89,7 +89,7 @@ export function StaffDirectory({
 
     const updatedStaff = {
       ...selectedStaff,
-      status: selectedStaff.status === "active" ? "inactive" : "active",
+      status: selectedStaff.status.toLowerCase() === "active" ? "inactive" : "active",
     }
 
     onStaffUpdate(updatedStaff)
@@ -188,10 +188,11 @@ export function StaffDirectory({
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
                           onClick={() => handleDeactivateStaff(staffMember)}
-                          className={staffMember.status === "active" ? "text-red-600" : "text-green-600"}
+                          className={staffMember.status.toLowerCase() === "active" ? "text-red-600" : "text-green-600"}
                         >
                           <UserX className="mr-2 h-4 w-4" />
-                          {staffMember.status === "active" ? "Deactivate" : "Activate"}
+                          {staffMember.status.toLowerCase() === "active" ? "Deactivate" : "Activate"}
+                          
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -314,17 +315,12 @@ export function StaffDirectory({
 
 // Create a stand-alone version of StaffDirectory with its own state managemen
 
-export function StandaloneStaffDirectory({
-  initialSearchQuery = '',
-  initialDepartmentFilter = 'all',
-  initialRoleFilter = 'all',
-  initialStatusFilter = 'all',
-  onStaffUpdate,
-}: StandaloneStaffDirectoryProps) {
-  const [searchQuery, setSearchQuery] = useState(initialSearchQuery)
-  const [departmentFilter, setDepartmentFilter] = useState(initialDepartmentFilter)
-  const [roleFilter, setRoleFilter] = useState(initialRoleFilter)
-  const [statusFilter, setStatusFilter] = useState(initialStatusFilter)
+export function StandaloneStaffDirectory() {
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   // Use the custom hook to manage staff data
   const {
@@ -346,16 +342,29 @@ export function StandaloneStaffDirectory({
     statusFilter,
   })
 
-  // Apply filters when they change
+  // Debounce search query
   useEffect(() => {
-    filterStaff(searchQuery, departmentFilter, roleFilter, statusFilter)
-  }, [searchQuery, departmentFilter, roleFilter, statusFilter, filterStaff])
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 800)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // Apply filters using the debounced search query, always starting on page 0
+  useEffect(() => {
+    filterStaff(
+      debouncedSearchQuery, 
+      departmentFilter, 
+      roleFilter, 
+      statusFilter, 
+      0, // Reset to page 0 when filters change
+      pagination.pageSize
+    )
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearchQuery, departmentFilter, roleFilter, statusFilter])
 
   const handleStaffUpdateWrapper = (staff: Staff) => {
-    handleStaffUpdate(staff)
-    if (onStaffUpdate) {
-      onStaffUpdate(staff)
-    }
+    handleStaffUpdate(staff, staff.id)
   }
 
   if (isLoading) {
