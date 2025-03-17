@@ -1,3 +1,5 @@
+export type Schedule = 'morning' | 'afternoon' | 'night' | 'on-call' | 'off' | { start: string; end: string };
+
 export interface StaffSchedule {
   recurring: {
     monday: Schedule;
@@ -13,8 +15,6 @@ export interface StaffSchedule {
   };
 }
 
-export type Schedule = 'morning' | 'afternoon' | 'night' | 'on-call' | 'off';
-
 // This interface is no longer used, but keeping it temporarily for reference
 // if there are other components using it that need to be updated
 export interface Availability {
@@ -26,7 +26,6 @@ export interface Availability {
   saturday?: Schedule;
   sunday?: Schedule;
   [key: string]: Schedule | string | undefined; // For dynamic day access
-
 }
 
 export interface Staff {

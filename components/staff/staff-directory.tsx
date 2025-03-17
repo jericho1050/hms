@@ -46,7 +46,11 @@ interface StaffDirectoryProps {
   onStaffUpdate: (updatedStaff: Staff) => void
   pagination?: PaginationState
   changePage?: (page: number) => void
-  changePageSize?: (pageSize: number) => void
+  changePageSize?: (pageSize: number) => void,
+  _testHandleViewStaff?: (staff: Staff) => void
+  _testHandleEditStaff?: (staff: Staff) => void
+  _testHandleDeactivateStaff?: (staff: Staff) => void
+  _testDirectChangePageSize?: (size: number) => void
 }
 interface StandaloneStaffDirectoryProps {
   initialSearchQuery?: string
@@ -61,7 +65,12 @@ export function StaffDirectory({
   onStaffUpdate, 
   pagination, 
   changePage, 
-  changePageSize 
+  changePageSize,
+    // Test props
+    _testHandleViewStaff,
+    _testHandleEditStaff,
+    _testHandleDeactivateStaff,
+    _testDirectChangePageSize
 }: StaffDirectoryProps) {
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
@@ -170,9 +179,8 @@ export function StaffDirectory({
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="icon" aria-label="Open menu">
                           <MoreVertical className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
@@ -226,9 +234,10 @@ export function StaffDirectory({
             <Select 
               value={pagination.pageSize.toString()} 
               onValueChange={(value) => changePageSize(parseInt(value))}
+              aria-label="Select page size"
             >
               <SelectTrigger className="h-8 w-[70px]">
-                <SelectValue placeholder={pagination.pageSize.toString()} />
+                <SelectValue>{pagination.pageSize}</SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="5">5</SelectItem>
@@ -244,9 +253,9 @@ export function StaffDirectory({
                 className="h-8 w-8"
                 onClick={() => changePage(pagination.currentPage - 1)}
                 disabled={pagination.currentPage === 0}
+                aria-label="Previous page"
               >
                 <ChevronLeft className="h-4 w-4" />
-                <span className="sr-only">Previous page</span>
               </Button>
               <div className="text-sm">
                 Page {pagination.currentPage + 1} of {pagination.totalPages || 1}
@@ -257,9 +266,9 @@ export function StaffDirectory({
                 className="h-8 w-8"
                 onClick={() => changePage(pagination.currentPage + 1)}
                 disabled={pagination.currentPage === pagination.totalPages - 1 || pagination.totalPages === 0}
+                aria-label="Next page"
               >
                 <ChevronRight className="h-4 w-4" />
-                <span className="sr-only">Next page</span>
               </Button>
             </div>
           </div>
