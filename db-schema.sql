@@ -192,8 +192,8 @@ CREATE TABLE public.patients (
   policy_holder_name text NULL,
   relationship_to_patient text NULL,
   emergency_contact_address text NULL,
-  status text NOT NULL DEFAULT 'Admitted'
-   CONSTRAINT check_patient_status CHECK (status IN ('Admitted', 'Discharged', 'Outpatient'));
+  status text NOT NULL DEFAULT 'Admitted',
+  CONSTRAINT check_patient_status CHECK (status IN ('Admitted', 'Discharged', 'Outpatient')),
   CONSTRAINT patients_pkey PRIMARY KEY (id),
   CONSTRAINT check_relationship_to_patient CHECK (((relationship_to_patient IS NULL) OR (relationship_to_patient = ANY (ARRAY['self'::text, 'spouse'::text, 'parent'::text, 'other'::text]))))
 ) TABLESPACE pg_default;
@@ -211,8 +211,53 @@ CREATE TABLE public.rooms (
   status text NOT NULL,
   CONSTRAINT rooms_pkey PRIMARY KEY (id),
   CONSTRAINT rooms_department_id_fkey FOREIGN KEY (department_id) REFERENCES departments(id),
-  CONSTRAINT occupancy_check CHECK ((current_occupancy <= capacity))
+  CONSTRAINT occupancy_check CHECK ((current_occupancy <= capacity)),
+  floor text NULL,
+  wing text NULL,
+  amenities text[] NULL,
+  features jsonb NULL,
+  last_cleaned timestamp with time zone NULL,
+  cleaning_status text DEFAULT 'clean',
+  is_isolation boolean DEFAULT false
 ) TABLESPACE pg_default;
+
+-- New table for patient-room assignments
+CREATE TABLE public.patient_room_assignments (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  patient_id uuid NOT NULL,
+  room_id uuid NOT NULL,
+  bed_number integer NOT NULL,
+  admission_date timestamp with time zone NOT NULL DEFAULT now(),
+  discharge_date timestamp with time zone NULL,
+  assigned_by uuid NOT NULL, -- staff_id who made the assignment
+  status text NOT NULL DEFAULT 'occupied', -- 'occupied', 'discharged', etc.
+  notes text NULL,
+  CONSTRAINT patient_room_assignments_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_room_assignments_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES patients(id),
+  CONSTRAINT patient_room_assignments_room_id_fkey FOREIGN KEY (room_id) REFERENCES rooms(id),
+  CONSTRAINT patient_room_assignments_assigned_by_fkey FOREIGN KEY (assigned_by) REFERENCES staff(id)
+) TABLESPACE pg_default;
+CREATE INDEX idx_patient_room_current ON public.patient_room_assignments USING btree (room_id, discharge_date) TABLESPACE pg_default;
+
+-- View for room occupancy history
+CREATE VIEW public.room_occupancy_history AS
+SELECT 
+  r.id as room_id,
+  r.room_number,
+  r.department_id,
+  d.name as department_name,
+  date_trunc('day', pra.admission_date) as date,
+  COUNT(DISTINCT pra.patient_id) as patients_admitted,
+  SUM(CASE WHEN pra.discharge_date IS NULL THEN 1 ELSE 0 END) as current_patients,
+  r.capacity,
+  ROUND((SUM(CASE WHEN pra.discharge_date IS NULL THEN 1 ELSE 0 END)::decimal / r.capacity) * 100, 2) as occupancy_rate
+FROM rooms r
+LEFT JOIN departments d ON r.department_id = d.id
+LEFT JOIN patient_room_assignments pra ON r.id = pra.room_id
+GROUP BY r.id, r.room_number, r.department_id, d.name, date_trunc('day', pra.admission_date), r.capacity
+ORDER BY date_trunc('day', pra.admission_date) DESC, r.room_number;
 
 CREATE TABLE public.staff (
   id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
@@ -328,6 +373,111 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to check if a room has available beds
+CREATE OR REPLACE FUNCTION public.check_room_availability(
+  p_room_id uuid
+)
+RETURNS boolean AS $$
+DECLARE
+  occupancy integer;
+  capacity integer;
+BEGIN
+  SELECT r.current_occupancy, r.capacity INTO occupancy, capacity
+  FROM rooms r
+  WHERE r.id = p_room_id;
+  
+  RETURN occupancy < capacity;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to assign patient to room
+CREATE OR REPLACE FUNCTION public.assign_patient_to_room(
+  p_patient_id uuid,
+  p_room_id uuid,
+  p_bed_number integer,
+  p_staff_id uuid
+)
+RETURNS uuid AS $$
+DECLARE
+  new_assignment_id uuid;
+BEGIN
+  -- Check if room has capacity
+  IF NOT public.check_room_availability(p_room_id) THEN
+    RAISE EXCEPTION 'Room is at full capacity';
+  END IF;
+  
+  -- Insert assignment
+  INSERT INTO patient_room_assignments(
+    patient_id, 
+    room_id, 
+    bed_number, 
+    assigned_by, 
+    status
+  ) VALUES (
+    p_patient_id,
+    p_room_id,
+    p_bed_number,
+    p_staff_id,
+    'occupied'
+  ) RETURNING id INTO new_assignment_id;
+  
+  -- Update room occupancy
+  UPDATE rooms 
+  SET current_occupancy = current_occupancy + 1
+  WHERE id = p_room_id;
+  
+  RETURN new_assignment_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to discharge patient from room
+CREATE OR REPLACE FUNCTION public.discharge_patient_from_room(
+  p_assignment_id uuid
+)
+RETURNS boolean AS $$
+DECLARE
+  room_id_var uuid;
+BEGIN
+  -- Get room id
+  SELECT room_id INTO room_id_var
+  FROM patient_room_assignments
+  WHERE id = p_assignment_id AND discharge_date IS NULL;
+  
+  IF room_id_var IS NULL THEN
+    RETURN false;
+  END IF;
+  
+  -- Update assignment
+  UPDATE patient_room_assignments
+  SET 
+    discharge_date = now(),
+    status = 'discharged',
+    updated_at = now()
+  WHERE id = p_assignment_id;
+  
+  -- Update room occupancy
+  UPDATE rooms 
+  SET current_occupancy = GREATEST(0, current_occupancy - 1)
+  WHERE id = room_id_var;
+  
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger to update room status when occupancy changes
+CREATE OR REPLACE FUNCTION update_room_status()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.current_occupancy = 0 THEN
+    NEW.status = 'available';
+  ELSIF NEW.current_occupancy = NEW.capacity THEN
+    NEW.status = 'full';
+  ELSE
+    NEW.status = 'partially occupied';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 ---------------------------------------------------------------------------
 
@@ -342,5 +492,11 @@ CREATE TRIGGER handle_new_user
 AFTER INSERT ON auth.users
 FOR EACH ROW
 EXECUTE FUNCTION public.handle_new_user();
+
+CREATE TRIGGER update_room_status_trigger
+BEFORE UPDATE ON public.rooms
+FOR EACH ROW
+WHEN (OLD.current_occupancy IS DISTINCT FROM NEW.current_occupancy)
+EXECUTE FUNCTION update_room_status();
 
 -------------------------------------------------
