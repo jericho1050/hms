@@ -5,6 +5,30 @@ import { supabase } from '@/utils/supabase/client';
 import { StaffFilters, PaginationState, StaffStats } from '@/types/form-staff';
 import { StaffFormValues } from '@/components/staff/new-staff-form';
 import { nanoid } from 'nanoid';
+// Import server actions
+import {
+  addStaffMember,
+  updateStaffMember,
+  updateStaffAvailability,
+} from '@/app/actions/staff';
+
+// Define a type for database staff item
+interface DbStaffItem {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role?: string | null;
+  department?: string | null;
+  email?: string | null;
+  contact_number?: string | null;
+  address?: string | null;
+  joining_date?: string | null;
+  status?: string | null;
+  license_number?: string | null;
+  specialty?: string | null;
+  qualification?: string | null;
+  availability?: any;
+}
 
 export function useStaffData(initialFilters?: Partial<StaffFilters>) {
   const [isLoading, setIsLoading] = useState(true);
@@ -72,46 +96,177 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
     };
   };
 
-  // Fetch staff data with/without pagination
-  const fetchStaffData = useCallback(
+  // Map DB staff item to Staff interface with default values for optional fields
+  const mapDbStaffToStaff = (item: DbStaffItem): Staff => ({
+    id: item.id,
+    firstName: item.first_name,
+    lastName: item.last_name,
+    role: item.role || '',
+    department: item.department || '', // Default empty string for undefined values
+    email: item.email || '',
+    phone: item.contact_number || '',
+    address: item.address || '',
+    joiningDate: item.joining_date || new Date().toISOString().split('T')[0],
+    status: item.status || 'active',
+    licenseNumber: item.license_number || '',
+    specialty: item.specialty || '',
+    qualification: item.qualification || '',
+    availability: mapAvailabilityToStaffSchedule(item.availability),
+  });
+  async function fetchStaffData(
+    page: number,
+    pageSize: number,
+    all: boolean = false
+  ) {
+    // Initialize query
+    let query = supabase.from('staff').select('*', { count: 'exact' });
+
+    // Apply pagination only if 'all' is false
+    if (!all) {
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+      query = query.range(start, end);
+    }
+
+    // Execute the query
+    const { data: staff, error, count } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return { staff, count };
+  }
+
+  async function filterStaffData(
+    searchQuery: string,
+    departmentFilter: string,
+    roleFilter: string,
+    statusFilter: string,
+    page: number,
+    pageSize: number
+  ) {
+    // Initialize query with filters
+    let query = supabase.from('staff').select('*', { count: 'exact' });
+
+    // Apply filters
+    if (searchQuery) {
+      const searchLower = `%${searchQuery.toLowerCase()}%`;
+      query = query.or(
+        `first_name.ilike.${searchLower},last_name.ilike.${searchLower},email.ilike.${searchLower}`
+      );
+    }
+
+    if (departmentFilter && departmentFilter !== 'all') {
+      query = query.eq('department', departmentFilter);
+    }
+
+    if (roleFilter && roleFilter !== 'all') {
+      query = query.eq('role', roleFilter);
+    }
+
+    if (statusFilter && statusFilter !== 'all') {
+      query = query.eq('status', statusFilter);
+    }
+
+    // Get count first
+    const countQuery = await query;
+    const count = countQuery.count;
+
+    // Then apply pagination
+    const start = page * pageSize;
+    const end = start + pageSize - 1;
+    query = query.range(start, end);
+
+    // Execute the query
+    const { data: staff, error } = await query;
+
+    if (error) {
+      throw error;
+    }
+
+    return { staff, count };
+  }
+
+  async function getStaffStats() {
+    try {
+      // Get counts of active staff directly from database
+      const {
+        data: activeStaffData,
+        error: activeError,
+        count: activeCount,
+      } = await supabase
+        .from('staff')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+
+      if (activeError) throw activeError;
+
+      // Get counts of inactive staff directly from database
+      const {
+        data: inactiveStaffData,
+        error: inactiveError,
+        count: inactiveCount,
+      } = await supabase
+        .from('staff')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'inactive');
+
+      if (inactiveError) throw inactiveError;
+
+      // Get department breakdown
+      const { data: deptData, error: deptError } = await supabase
+        .from('staff')
+        .select('department');
+
+      if (deptError) throw deptError;
+
+      const departmentBreakdown: Record<string, number> = {};
+      deptData?.forEach((item: { department: string }) => {
+        if (item.department) {
+          departmentBreakdown[item.department] =
+            (departmentBreakdown[item.department] || 0) + 1;
+        }
+      });
+
+      // Get role breakdown
+      const { data: roleData, error: roleError } = await supabase
+        .from('staff')
+        .select('role');
+
+      if (roleError) throw roleError;
+
+      const roleBreakdown: Record<string, number> = {};
+      roleData?.forEach((item: { role: string }) => {
+        if (item.role) {
+          roleBreakdown[item.role] = (roleBreakdown[item.role] || 0) + 1;
+        }
+      });
+
+      return {
+        totalStaff: (activeCount || 0) + (inactiveCount || 0),
+        activeStaff: activeCount || 0,
+        inactiveStaff: inactiveCount || 0,
+        departmentBreakdown,
+        roleBreakdown,
+      };
+    } catch (error) {
+      console.error('Error calculating staff stats:', error);
+      throw error;
+    }
+  }
+
+  // Fetch staff data with/without pagination using server action
+  const fetchStaffDataHandler = useCallback(
     async (page = 0, pageSize = 10, all = initialFilters?.fetchAllStaff) => {
       try {
         setIsLoading(true);
 
-        // Initialize query
-        let query = supabase.from('staff').select('*', { count: 'exact' });
+        // Use the server action instead of direct Supabase call
+        const { staff, count } = await fetchStaffData(page, pageSize, all);
 
-        // Apply pagination only if 'all' is false
-        if (!all) {
-          const start = page * pageSize;
-          const end = start + pageSize - 1;
-          query = query.range(start, end);
-        }
-
-        // Execute the query
-        let { data: staff, error, count } = await query;
-
-        if (error) {
-          throw error;
-        }
-
-        // Map the database fields to the Staff interface format
-        const mappedStaff = (staff || []).map((item) => ({
-          id: item.id,
-          firstName: item.first_name,
-          lastName: item.last_name,
-          role: item.role || '',
-          department: item.department,
-          email: item.email,
-          phone: item.contact_number || '',
-          address: item.address || '',
-          joiningDate: item.joining_date,
-          status: item.status || 'active',
-          licenseNumber: item.license_number || '',
-          specialty: item.specialty || '',
-          qualification: item.qualification || '',
-          availability: mapAvailabilityToStaffSchedule(item.availability),
-        }));
+        // Map the database fields to the Staff interface format with default values
+        const mappedStaff: Staff[] = (staff || []).map(mapDbStaffToStaff);
 
         // Update pagination state
         setPagination({
@@ -129,7 +284,7 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
         setIsLoading(false);
       }
     },
-    []
+    [initialFilters?.fetchAllStaff]
   );
 
   // Function to change page
@@ -166,10 +321,10 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
   // Handle refresh
   const handleRefresh = useCallback(async () => {
     setIsLoading(true);
-    await fetchStaffData(pagination.currentPage, pagination.pageSize);
-  }, [fetchStaffData, pagination.currentPage, pagination.pageSize]);
+    await fetchStaffDataHandler(pagination.currentPage, pagination.pageSize);
+  }, [fetchStaffDataHandler, pagination.currentPage, pagination.pageSize]);
 
-  // Filter staff based on search query and filters
+  // Filter staff based on search query and filters - now using server action
   const filterStaff = useCallback(
     async (
       searchQuery: string,
@@ -182,62 +337,18 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
       try {
         setIsLoading(true);
 
-        // Initialize query with filters
-        let query = supabase.from('staff').select('*', { count: 'exact' });
+        // Use server action instead of direct Supabase call
+        const { staff, count } = await filterStaffData(
+          searchQuery,
+          departmentFilter,
+          roleFilter,
+          statusFilter,
+          page,
+          pageSize
+        );
 
-        // Apply filters
-        if (searchQuery) {
-          const searchLower = `%${searchQuery.toLowerCase()}%`;
-          query = query.or(
-            `first_name.ilike.${searchLower},last_name.ilike.${searchLower},email.ilike.${searchLower}`
-          );
-        }
-
-        if (departmentFilter && departmentFilter !== 'all') {
-          query = query.eq('department', departmentFilter);
-        }
-
-        if (roleFilter && roleFilter !== 'all') {
-          query = query.eq('role', roleFilter);
-        }
-
-        if (statusFilter && statusFilter !== 'all') {
-          query = query.eq('status', statusFilter);
-        }
-
-        // Get count first
-        const countQuery = await query;
-        const count = countQuery.count;
-
-        // Then apply pagination
-        const start = page * pageSize;
-        const end = start + pageSize - 1;
-        query = query.range(start, end);
-
-        // Execute the query
-        const { data: staff, error } = await query;
-
-        if (error) {
-          throw error;
-        }
-
-        // Map the database results to Staff interface format
-        const mappedStaff = (staff || []).map((item) => ({
-          id: item.id,
-          firstName: item.first_name,
-          lastName: item.last_name,
-          role: item.role || '',
-          department: item.department,
-          email: item.email,
-          phone: item.contact_number || '',
-          address: item.address || '',
-          joiningDate: item.joining_date,
-          status: item.status || 'active',
-          licenseNumber: item.license_number || '',
-          specialty: item.specialty || '',
-          qualification: item.qualification || '',
-          availability: mapAvailabilityToStaffSchedule(item.availability),
-        }));
+        // Map the database results to Staff interface format with default values
+        const mappedStaff: Staff[] = (staff || []).map(mapDbStaffToStaff);
 
         // Update filtered staff state
         setFilteredStaff(mappedStaff);
@@ -255,148 +366,31 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
         setIsLoading(false);
       }
     },
-    [
-      pagination.currentPage,
-      pagination.pageSize,
-      mapAvailabilityToStaffSchedule,
-    ]
+    [pagination.currentPage, pagination.pageSize]
   );
 
-  // Calculate stats - modify to use total count from pagination
-  const calculateStats = async () => {
-    try {
-      // Get counts of active staff directly from database
-      const {
-        data: activeStaffData,
-        error: activeError,
-        count: activeCount,
-      } = await supabase
-        .from('staff')
-        .select('*', { count: 'exact', head: true }) // head: true returns only count, not data
-        .eq('status', 'active');
-
-      if (activeError) throw activeError;
-
-      // Get counts of inactive staff directly from database
-      const {
-        data: inactiveStaffData,
-        error: inactiveError,
-        count: inactiveCount,
-      } = await supabase
-        .from('staff')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'inactive');
-
-      if (inactiveError) throw inactiveError;
-
-      // Get department breakdown
-      const { data: deptData, error: deptError } = await supabase
-        .from('staff')
-        .select('department');
-
-      if (deptError) throw deptError;
-
-      const departmentBreakdown: Record<string, number> = {};
-      deptData?.forEach((item) => {
-        if (item.department) {
-          departmentBreakdown[item.department] =
-            (departmentBreakdown[item.department] || 0) + 1;
-        }
-      });
-
-      // Get role breakdown
-      const { data: roleData, error: roleError } = await supabase
-        .from('staff')
-        .select('role');
-
-      if (roleError) throw roleError;
-
-      const roleBreakdown: Record<string, number> = {};
-      roleData?.forEach((item) => {
-        if (item.role) {
-          roleBreakdown[item.role] = (roleBreakdown[item.role] || 0) + 1;
-        }
-      });
-
-      // Update stats state
-      setStats({
-        totalStaff: (activeCount || 0) + (inactiveCount || 0),
-        activeStaff: activeCount || 0,
-        inactiveStaff: inactiveCount || 0,
-        departmentBreakdown,
-        roleBreakdown,
-      });
-    } catch (error) {
-      console.error('Error calculating staff stats:', error);
-    }
-  }; // No dependencies needed since it doesn't use any state directly
-
-  // Handle new staff submission
+  // Handle new staff submission using server action
   const handleNewStaffSubmit = useCallback(
     async (newStaffData: StaffFormValues) => {
-      // In a real app, this would be an API call to Supabase
-      const defaultAvailability: StaffSchedule = {
-        recurring: {
-          monday: 'on-call',
-          tuesday: 'on-call',
-          wednesday: 'on-call',
-          thursday: 'on-call',
-          friday: 'on-call',
-          saturday: 'off',
-          sunday: 'off',
-        },
-        overrides: {},
-      };
+      try {
+        // Call server action
+        const data = await addStaffMember(newStaffData);
 
-      const newStaff = {
-        first_name: newStaffData.firstName || '',
-        last_name: newStaffData.lastName || '',
-        role: newStaffData.role || '',
-        department: newStaffData.department || '',
-        email: newStaffData.email || '',
-        contact_number: newStaffData.phone || '',
-        address: newStaffData.address || '',
-        joining_date:
-          newStaffData.joiningDate || new Date().toISOString().split('T')[0],
-        status: 'active',
-        license_number: newStaffData.licenseNumber || '',
-        specialty: newStaffData.specialty || '',
-        qualification: newStaffData.qualification || '',
-        // Convert our TypeScript object to a plain JS object for Supabase
-        availability: defaultAvailability as any,
-      };
+        if (data && data.length > 0) {
+          // Map the returned data to match Staff interface
+          const mappedNewStaff: Staff = mapDbStaffToStaff(data[0]);
 
-      const { data, error } = await supabase
-        .from('staff')
-        .insert(newStaff)
-        .select();
-
-      if (data && data.length > 0) {
-        // Map the returned data to match Staff interface
-        const mappedNewStaff: Staff = {
-          id: data[0].id,
-          firstName: data[0].first_name,
-          lastName: data[0].last_name,
-          role: data[0].role || '',
-          department: data[0].department,
-          email: data[0].email,
-          phone: data[0].contact_number || '',
-          address: data[0].address || '',
-          joiningDate: data[0].joining_date,
-          status: data[0].status || 'active',
-          licenseNumber: data[0].license_number || '',
-          specialty: data[0].specialty || '',
-          qualification: data[0].qualification || '',
-          availability: mapAvailabilityToStaffSchedule(data[0].availability),
-        };
-
-        setStaffData((prev) => [...prev, mappedNewStaff]);
+          // Optimistic update of local state
+          setStaffData((prev) => [...prev, mappedNewStaff]);
+        }
+      } catch (error) {
+        console.error('Error adding new staff:', error);
       }
     },
     []
   );
 
-  // Handle staff update
+  // Handle staff update using server action
   const handleStaffUpdate = useCallback(
     async (
       updatedStaff: Staff,
@@ -404,59 +398,25 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
       availability?: StaffSchedule
     ) => {
       try {
-        // In a real app, we would update the staff data in the database
         if (availability) {
-          const { data, error } = await supabase
-            .from('staff')
-            .update({
-              // Convert our TypeScript object to a plain JS object for Supabase
-              availability: availability as any,
-            })
-            .eq('id', staffId)
-            .select();
-          if (error) {
-            throw error;
-          }
+          // Update just availability
+          await updateStaffAvailability(staffId, availability);
         } else {
-          // Map Staff object to match database schema
-          const dbStaff = {
-            first_name: updatedStaff.firstName,
-            last_name: updatedStaff.lastName,
-            role: updatedStaff.role,
-            department: updatedStaff.department,
-            email: updatedStaff.email,
-            contact_number: updatedStaff.phone,
-            address: updatedStaff.address,
-            joining_date: updatedStaff.joiningDate,
-            status: updatedStaff.status,
-            license_number: updatedStaff.licenseNumber,
-            specialty: updatedStaff.specialty,
-            qualification: updatedStaff.qualification,
-            availability: updatedStaff.availability as any,
-          };
-
-          const { data, error } = await supabase
-            .from('staff')
-            .update(dbStaff)
-            .eq('id', staffId)
-            .select();
-          if (error) {
-            throw error;
-          }
+          // Update entire staff record
+          await updateStaffMember(updatedStaff, staffId);
         }
 
+        // Optimistic update of local state
         const updatedStaffData = staffData.map((staff) =>
           staff.id === updatedStaff.id ? updatedStaff : staff
         );
 
         setStaffData(updatedStaffData);
-
         setFilteredStaff((prev) =>
           prev.map((staff) =>
             staff.id === updatedStaff.id ? updatedStaff : staff
           )
         );
-
       } catch (error) {
         console.error('Error updating staff data:', error);
       }
@@ -472,32 +432,13 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
 
   // Initial data load
   useEffect(() => {
-    fetchStaffData();
-  }, [fetchStaffData]);
+    fetchStaffDataHandler();
+  }, [fetchStaffDataHandler]);
 
+  // useEffect(() => {
+  //   calculateStats();
+  // }, []);
 
-
-  useEffect(() => {
-    calculateStats();
-  }, [staffData, calculateStats]);
-
-  // Set up realtime subscription for staff changes
-  useEffect(() => {
-    // Set up realtime subscription
-    const channel = supabase
-      .channel('staff-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'staff' },
-        async (payload) => {
-          calculateStats();
-        }
-      ).subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    }
-  },[]);
 
 
   useEffect(() => {
@@ -519,6 +460,8 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
     staffData,
     filteredStaff,
     stats,
+    setStats,
+    getStaffStats,
     departments,
     roles,
     isLoading,

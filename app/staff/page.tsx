@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import { StaffAvailability } from '@/components/staff/staff-availability';
 import { NewStaffForm } from '@/components/staff/new-staff-form';
 import { useStaffData } from '@/hooks/use-staff';
 import { StandaloneStaffDirectory } from '@/components/staff/staff-directory';
+import { supabase } from '@/utils/supabase/client';
 
 export default function StaffManagementPage() {
   const [isNewStaffModalOpen, setIsNewStaffModalOpen] = useState(false);
@@ -24,15 +25,53 @@ export default function StaffManagementPage() {
   // Use the custom hook to get global staff stats
   const {
     stats,
+    setStats,
     departments,
     roles,
     isLoading,
     staffData,
+    getStaffStats,
     filteredStaff,
     filterStaff,
     handleNewStaffSubmit,
   } = useStaffData();
+  // Set up realtime subscription for staff changes
+  useEffect(() => {
+    console.log('Attempting to set up realtime subscription...');
 
+    const channel = supabase
+      .channel('staff-changes')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'staff' },
+        async (payload) => {
+          console.log('Change event received:', payload);
+          const statsData = await getStaffStats();
+          console.log('staffData in on', statsData)
+          setStats(statsData);
+        }
+      )
+      .subscribe(async (status) => {
+        console.log('Subscription status:', status);
+        const statsData = await getStaffStats();
+        setStats(statsData);
+
+          console.log('staffData in subscribe', statsData)
+        // Check if successfully connected
+        if (status === 'SUBSCRIBED') {
+          console.log('Successfully connected to staff changes!');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('Failed to subscribe to staff changes');
+        }
+      });
+
+    console.log('Channel object:', channel);
+
+    return () => {
+      console.log('Cleaning up realtime subscription');
+      supabase.removeChannel(channel);
+    };
+  }, []);
   if (isLoading) {
     return (
       <div className='flex items-center justify-center min-h-[calc(100vh-4rem)]'>
