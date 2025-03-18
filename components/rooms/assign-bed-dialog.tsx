@@ -166,7 +166,7 @@ export function AssignBedDialog({ roomId, bedId, room, onClose, onAssign }: Assi
           <div className="space-y-2">
             <Label htmlFor="patient-select">Select Patient</Label>
             <Select value={selectedPatientId} onValueChange={setSelectedPatientId}>
-              <SelectTrigger id="patient-select">
+              <SelectTrigger id="patient-select" data-testid="select-trigger">
                 <SelectValue placeholder="Select a patient" />
               </SelectTrigger>
               <SelectContent className="max-h-[200px]">
@@ -178,7 +178,7 @@ export function AssignBedDialog({ roomId, bedId, room, onClose, onAssign }: Assi
                     </div>
                   </SelectItem>
                 ) : patients.length > 0 ? (
-                  patients.map((patient) => (
+                  patients.map((patient, index) => (
                     <SelectItem key={patient.id} value={patient.id}>
                       {patient.name}
                     </SelectItem>

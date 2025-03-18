@@ -337,7 +337,7 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
         <div className="flex items-center space-x-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px]"  data-testid="department-select">
               <SelectValue placeholder="Select Department" />
             </SelectTrigger>
             <SelectContent>
