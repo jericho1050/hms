@@ -5,8 +5,10 @@ export interface Bed {
   name: string
   type: string
   patientId: string | null
+  patientName?: string
   admissionDate?: string
   expectedDischargeDate?: string
+  assignmentId?: string
 }
 
 export interface RoomHistoryEvent {

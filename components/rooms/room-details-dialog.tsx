@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   Dialog,
   DialogContent,
@@ -12,22 +13,69 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BedIcon, CheckCircle2, ClipboardList, History, Info, Settings, UserPlus, XCircle } from "lucide-react"
-import type { Room, Department, Bed } from "@/types/rooms"
+import { Textarea } from "@/components/ui/textarea"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { supabase } from "@/utils/supabase/client"
+import { getRoomHistory } from "@/app/actions/rooms"
+import type { Room, Department, Bed, RoomHistoryEvent } from "@/types/rooms"
 
 interface RoomDetailsDialogProps {
   room: Room
   department?: Department
   onClose: () => void
   onAssignBed: (bedId: string) => void
-  onReleaseBed: (bedId: string) => void
+  onReleaseBed: (bedId: string, notes?: string) => void
 }
 
 export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onReleaseBed }: RoomDetailsDialogProps) {
+  const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
+  const [selectedBedId, setSelectedBedId] = useState<string | null>(null)
+  const [releaseNotes, setReleaseNotes] = useState("")
+  const [history, setHistory] = useState<RoomHistoryEvent[]>([])
+  const [loadingHistory, setLoadingHistory] = useState(false)
+  
+  useEffect(() => {
+    const fetchRoomHistory = async () => {
+      if (!room) return
+      
+      setLoadingHistory(true)
+      try {
+        // Use our server action instead of direct Supabase call
+        const { history, error } = await getRoomHistory(room.id)
+        
+        if (error) throw new Error(error)
+        
+        setHistory(history)
+      } catch (error) {
+        console.error('Error fetching room history:', error)
+      } finally {
+        setLoadingHistory(false)
+      }
+    }
+    
+    fetchRoomHistory()
+  }, [room])
+  
   const getBedStatusIcon = (bed: Bed) => {
     if (bed.patientId) {
       return <Badge className="bg-red-500">Occupied</Badge>
     }
     return <Badge className="bg-green-500">Available</Badge>
+  }
+  
+  const handleReleaseDialogOpen = (bedId: string) => {
+    setSelectedBedId(bedId)
+    setReleaseDialogOpen(true)
+  }
+  
+  const handleConfirmRelease = () => {
+    if (selectedBedId) {
+      onReleaseBed(selectedBedId, releaseNotes)
+      setReleaseDialogOpen(false)
+      setReleaseNotes("")
+      setSelectedBedId(null)
+      onClose()
+    }
   }
 
   return (
@@ -35,7 +83,7 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
       <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle className="text-xl">
-            {room.name} - Room {room.roomNumber}
+            {room.type} - Room {room.roomNumber}
           </DialogTitle>
           <DialogDescription>
             {department?.name} • Floor {room.floor}
@@ -76,12 +124,27 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
                         <span className="font-medium">Patient ID:</span> {bed.patientId}
                       </div>
                       <div className="text-sm">
-                        <span className="font-medium">Admitted:</span> {bed.admissionDate || "N/A"}
+                        <span className="font-medium">Name:</span> {bed.patientName || "Unknown Patient"}
                       </div>
                       <div className="text-sm">
-                        <span className="font-medium">Expected Discharge:</span> {bed.expectedDischargeDate || "N/A"}
+                        <span className="font-medium">Admitted:</span> {bed.admissionDate 
+                          ? new Date(bed.admissionDate).toLocaleDateString() 
+                          : "N/A"}
                       </div>
-                      <Button variant="outline" size="sm" className="w-full mt-2" onClick={() => onReleaseBed(bed.id)}>
+                      <div className="text-sm">
+                        <span className="font-medium">Expected Discharge:</span> {bed.expectedDischargeDate 
+                          ? new Date(bed.expectedDischargeDate).toLocaleDateString() 
+                          : "N/A"}
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full mt-2" 
+                        onClick={() => handleReleaseDialogOpen(
+                          // Use assignment ID if available, otherwise use bed ID
+                          bed.assignmentId ? `assignment-${bed.assignmentId}` : bed.id
+                        )}
+                      >
                         <XCircle className="mr-2 h-4 w-4" />
                         Release Bed
                       </Button>
@@ -121,12 +184,16 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
               <div className="space-y-2">
                 <h3 className="font-medium">Facilities</h3>
                 <ul className="text-sm space-y-1">
-                  {room.facilities.map((facility, index) => (
-                    <li key={index} className="flex items-center">
-                      <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
-                      {facility}
-                    </li>
-                  ))}
+                  {room.facilities && room.facilities.length > 0 ? (
+                    room.facilities.map((facility, index) => (
+                      <li key={index} className="flex items-center">
+                        <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+                        {facility}
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-muted-foreground">No specific facilities listed</li>
+                  )}
                 </ul>
               </div>
             </div>
@@ -142,8 +209,10 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
               <h3 className="font-medium">Recent Activity</h3>
 
               <div className="border rounded-lg divide-y">
-                {room.history && room.history.length > 0 ? (
-                  room.history.map((event, index) => (
+                {loadingHistory ? (
+                  <div className="p-3 text-sm text-center">Loading history...</div>
+                ) : history && history.length > 0 ? (
+                  history.map((event, index) => (
                     <div key={index} className="p-3 flex items-start">
                       <ClipboardList className="h-5 w-5 mr-3 text-muted-foreground flex-shrink-0 mt-0.5" />
                       <div>
@@ -172,6 +241,27 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog open={releaseDialogOpen} onOpenChange={setReleaseDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release Bed</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter discharge notes (optional)
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Textarea
+            value={releaseNotes}
+            onChange={(e) => setReleaseNotes(e.target.value)}
+            placeholder="Enter discharge notes"
+            className="min-h-[100px]"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRelease}>Confirm Release</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

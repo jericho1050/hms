@@ -11,18 +11,26 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { BedIcon, Filter, Search, UserPlus, Users } from "lucide-react"
 import { RoomDetailsDialog } from "@/components/rooms/room-details-dialog"
 import { AssignBedDialog } from "@/components/rooms/assign-bed-dialog"
-import { getRooms, getDepartments } from "@/lib/mock-rooms"
 import type { Room, Department, RoomStatus } from "@/types/rooms"
+import { assignBedToPatient, releaseBed } from "@/app/actions/rooms"
+import { useToast } from "@/hooks/use-toast"
+import { useStaff } from "@/hooks/use-staff"
+interface RoomsManagementProps {
+  initialRooms: Room[]
+  initialDepartments: Department[]
+}
 
-export function RoomsManagement() {
-  const [rooms, setRooms] = useState<Room[]>([])
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
+export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManagementProps) {
+  const [rooms, setRooms] = useState<Room[]>(initialRooms)
+  const [filteredRooms, setFilteredRooms] = useState<Room[]>(initialRooms)
+  const [departments, setDepartments] = useState<Department[]>(initialDepartments)
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedId: string } | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const {staffId} = useStaff();
+  const { toast } = useToast()
 
   // Status counts
   const [statusCounts, setStatusCounts] = useState({
@@ -34,17 +42,9 @@ export function RoomsManagement() {
   })
 
   useEffect(() => {
-    // Fetch rooms and departments
-    const roomsData = getRooms()
-    const departmentsData = getDepartments()
-
-    setRooms(roomsData)
-    setFilteredRooms(roomsData)
-    setDepartments(departmentsData)
-
     // Calculate initial status counts
-    calculateStatusCounts(roomsData)
-  }, [])
+    calculateStatusCounts(initialRooms)
+  }, [initialRooms])
 
   useEffect(() => {
     // Filter rooms based on department and search query
@@ -57,7 +57,26 @@ export function RoomsManagement() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       filtered = filtered.filter(
-        (room) => room.name.toLowerCase().includes(query) || room.roomNumber.toLowerCase().includes(query),
+        (room) => {
+          // Check if room type or number matches (keep existing functionality)
+          const roomType = room?.type?.toLowerCase() || '';
+          const roomNumber = room?.roomNumber?.toLowerCase() || '';
+          const roomMatches = roomType.includes(query) || roomNumber.includes(query);
+          
+          // Check if any patient in this room's beds matches the search
+          const patientMatches = room.beds.some(bed => {
+            // Search in patient name if available
+            const patientName = bed?.patientName?.toLowerCase() || '';
+            
+            // Also check patient ID as fallback
+            const patientId = bed?.patientId?.toLowerCase() || '';
+            
+            return patientName.includes(query) || patientId.includes(query);
+          });
+          
+          // Return true if either room or any patient matches
+          return roomMatches || patientMatches;
+        }
       )
     }
 
@@ -99,33 +118,136 @@ export function RoomsManagement() {
     })
   }
 
-  const handleAssignBed = (roomId: string, bedId: string, patientId: string | null) => {
-    const updatedRooms = rooms.map((room) => {
-      if (room.id === roomId) {
-        const updatedBeds = room.beds.map((bed) => {
-          if (bed.id === bedId) {
-            return { ...bed, patientId }
+  const handleAssignBed = async (roomId: string, bedId: string, patientId: string, admissionDate: string, expectedDischargeDate?: string, isEmergency: boolean = false) => {
+    try {
+
+      const assignedBy = staffId || "00000000-0000-0000-0000-000000000000"
+      
+      // Call server action
+      const result = await assignBedToPatient(
+        roomId,
+        bedId,
+        patientId,
+        assignedBy,
+        admissionDate,
+        expectedDischargeDate,
+        isEmergency
+      )
+      
+      if (result.success) {
+        // Update local state optimistically
+        const updatedRooms = rooms.map((room) => {
+          if (room.id === roomId) {
+            const updatedBeds = room.beds.map((bed) => {
+              if (bed.id === bedId) {
+                return { 
+                  ...bed, 
+                  patientId,
+                  admissionDate,
+                  expectedDischargeDate
+                }
+              }
+              return bed
+            })
+  
+            // Recalculate room status
+            const occupiedBeds = updatedBeds.filter((bed) => bed.patientId).length
+            let status: RoomStatus = "available"
+  
+            if (occupiedBeds === updatedBeds.length) {
+              status = "full"
+            } else if (occupiedBeds > 0) {
+              status = "partial"
+            }
+  
+            return { ...room, beds: updatedBeds, status }
           }
-          return bed
+          return room
         })
-
-        // Recalculate room status
-        const occupiedBeds = updatedBeds.filter((bed) => bed.patientId).length
-        let status: RoomStatus = "available"
-
-        if (occupiedBeds === updatedBeds.length) {
-          status = "full"
-        } else if (occupiedBeds > 0) {
-          status = "partial"
-        }
-
-        return { ...room, beds: updatedBeds, status }
+  
+        setRooms(updatedRooms)
+        toast({
+          title: "Bed assigned successfully",
+          description: "The patient has been assigned to the bed.",
+          variant: "default",
+        })
+      } else {
+        toast({
+          title: "Error assigning bed",
+          description: result.error || "Something went wrong.",
+          variant: "destructive",
+        })
       }
-      return room
-    })
-
-    setRooms(updatedRooms)
+    } catch (error) {
+      toast({
+        title: "Error assigning bed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      })
+    }
+    
     setSelectedBed(null)
+  }
+  
+  const handleReleaseBed = async (roomId: string, bedId: string, notes?: string) => {
+    try {
+      // Get current user info - in a real app this would come from auth
+      const releasedBy = "Current User"
+      
+      // Call server action
+      const result = await releaseBed(roomId, bedId, releasedBy, notes)
+      
+      if (result.success) {
+        // Update local state optimistically
+        const updatedRooms = rooms.map((room) => {
+          if (room.id === roomId) {
+            const updatedBeds = room.beds.map((bed) => {
+              if (bed.id === bedId) {
+                return { 
+                  ...bed, 
+                  patientId: null,
+                  admissionDate: undefined,
+                  expectedDischargeDate: undefined
+                }
+              }
+              return bed
+            })
+  
+            // Recalculate room status
+            const occupiedBeds = updatedBeds.filter((bed) => bed.patientId).length
+            let status: RoomStatus = "available"
+  
+            if (occupiedBeds === updatedBeds.length) {
+              status = "full"
+            } else if (occupiedBeds > 0) {
+              status = "partial"
+            }
+  
+            return { ...room, beds: updatedBeds, status }
+          }
+          return room
+        })
+  
+        setRooms(updatedRooms)
+        toast({
+          title: "Bed released successfully",
+          description: "The bed is now available.",
+          variant: "default",
+        })
+      } else {
+        toast({
+          title: "Error releasing bed",
+          description: result.error || "Something went wrong.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error releasing bed",
+        description: "An unexpected error occurred.",
+        variant: "destructive",
+      })
+    }
   }
 
   const getStatusColor = (status: RoomStatus) => {
@@ -256,6 +378,7 @@ export function RoomsManagement() {
       {viewMode === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredRooms.map((room) => {
+            console.log(room);
             const department = departments.find((d) => d.id === room.departmentId)
             const occupiedBeds = room.beds.filter((bed) => bed.patientId).length
 
@@ -265,7 +388,7 @@ export function RoomsManagement() {
                 <CardHeader>
                   <div className="flex justify-between items-start">
                     <div>
-                      <CardTitle className="text-lg">{room.name}</CardTitle>
+                      <CardTitle className="text-lg">{room.type}</CardTitle>
                       <CardDescription>Room {room.roomNumber}</CardDescription>
                     </div>
                     {getStatusBadge(room.status)}
@@ -323,7 +446,7 @@ export function RoomsManagement() {
             return (
               <div key={room.id} className="grid grid-cols-12 p-4 border-b items-center">
                 <div className="col-span-3">
-                  <div className="font-medium">{room.name}</div>
+                  <div className="font-medium">{room.type}</div>
                   <div className="text-sm text-muted-foreground">
                     Room {room.roomNumber}, Floor {room.floor}
                   </div>
@@ -367,8 +490,8 @@ export function RoomsManagement() {
             setSelectedBed({ roomId: selectedRoom.id, bedId })
             setSelectedRoom(null)
           }}
-          onReleaseBed={(bedId) => {
-            handleAssignBed(selectedRoom.id, bedId, null)
+          onReleaseBed={(bedId, notes) => {
+            handleReleaseBed(selectedRoom.id, bedId, notes)
             // Refresh selected room data
             const updatedRoom = rooms.find((r) => r.id === selectedRoom.id)
             if (updatedRoom) {
@@ -385,7 +508,16 @@ export function RoomsManagement() {
           bedId={selectedBed.bedId}
           room={rooms.find((r) => r.id === selectedBed.roomId)}
           onClose={() => setSelectedBed(null)}
-          onAssign={(patientId) => handleAssignBed(selectedBed.roomId, selectedBed.bedId, patientId)}
+          onAssign={(patientId, admissionDate, expectedDischargeDate, isEmergency) => 
+            handleAssignBed(
+              selectedBed.roomId, 
+              selectedBed.bedId, 
+              patientId, 
+              admissionDate,
+              expectedDischargeDate,
+              isEmergency
+            )
+          }
         />
       )}
     </div>

@@ -1,13 +1,17 @@
 import { Suspense } from "react"
 import { RoomsManagement } from "@/components/rooms/rooms-management"
 import { RoomsPageSkeleton } from "@/components/rooms/rooms-page-skeleton"
+import { getRoomsData, getDepartmentsData } from "@/app/actions/rooms"
 
 export const metadata = {
   title: "Room Management | CareSanar HMS",
   description: "Manage hospital rooms and bed assignments",
 }
 
-export default function RoomsPage() {
+export default async function RoomsPage() {
+  const { rooms } = await getRoomsData()
+  const { departments } = await getDepartmentsData()
+  
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div>
@@ -18,7 +22,7 @@ export default function RoomsPage() {
       </div>
 
       <Suspense fallback={<RoomsPageSkeleton />}>
-        <RoomsManagement />
+        <RoomsManagement initialRooms={rooms} initialDepartments={departments} />
       </Suspense>
     </div>
   )

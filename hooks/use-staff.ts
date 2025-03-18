@@ -11,6 +11,8 @@ import {
   updateStaffMember,
   updateStaffAvailability,
 } from '@/app/actions/staff';
+import { useAuth } from './use-auth';
+import { createClient } from '@/utils/supabase/client';
 
 // Define a type for database staff item
 interface DbStaffItem {
@@ -473,4 +475,73 @@ export function useStaffData(initialFilters?: Partial<StaffFilters>) {
     changePage,
     changePageSize,
   };
+}
+
+export function useStaff() {
+  const { user, isLoading: isAuthLoading, isAuthenticated } = useAuth()
+  const [staffId, setStaffId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const supabase = createClient()
+
+  useEffect(() => {
+    const fetchStaffId = async () => {
+      if (!isAuthenticated || !user) {
+        setStaffId(null)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('staff')
+          .select('id')
+          .eq('user_id', user.id)
+          .single()
+
+        if (error) {
+          console.error('Error fetching staff record:', error)
+          setError(error.message)
+          setStaffId(null)
+        } else if (data) {
+          setStaffId(data.id)
+          setError(null)
+        } else {
+          setStaffId(null)
+          setError('No staff record found for this user')
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err)
+        setError('An unexpected error occurred')
+        setStaffId(null)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    if (!isAuthLoading) {
+      fetchStaffId()
+    }
+  }, [user, isAuthLoading, isAuthenticated])
+
+  // Provide a fallback ID for development/testing
+  const getStaffId = () => {
+    if (staffId) return staffId
+    
+    // Use this fallback only if staff ID couldn't be retrieved
+    // but user is authenticated - helps with development
+    if (isAuthenticated && !isLoading && !staffId) {
+      console.warn('Using fallback staff ID - no staff record found for authenticated user')
+      return "00000000-0000-0000-0000-000000000000"
+    }
+    
+    return null
+  }
+
+  return {
+    staffId: getStaffId(),
+    isLoading: isLoading || isAuthLoading,
+    error,
+    isAuthenticated
+  }
 }
