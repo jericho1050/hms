@@ -16,8 +16,8 @@ import { BedIcon, CheckCircle2, ClipboardList, History, Info, Settings, UserPlus
 import { Textarea } from "@/components/ui/textarea"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { supabase } from "@/utils/supabase/client"
-import { getRoomHistory } from "@/app/actions/rooms"
 import type { Room, Department, Bed, RoomHistoryEvent } from "@/types/rooms"
+import { useRooms } from "@/hooks/use-rooms"
 
 interface RoomDetailsDialogProps {
   room: Room
@@ -32,8 +32,8 @@ export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onRe
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null)
   const [releaseNotes, setReleaseNotes] = useState("")
   const [history, setHistory] = useState<RoomHistoryEvent[]>([])
-  const [loadingHistory, setLoadingHistory] = useState(false)
-  
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const {getRoomHistory} = useRooms();
   useEffect(() => {
     const fetchRoomHistory = async () => {
       if (!room) return

@@ -1,7 +1,7 @@
 import { Suspense } from "react"
 import { RoomsManagement } from "@/components/rooms/rooms-management"
 import { RoomsPageSkeleton } from "@/components/rooms/rooms-page-skeleton"
-import { getRoomsData, getDepartmentsData } from "@/app/actions/rooms"
+import { getRoomsData,getDepartmentsData } from "./utilts"
 
 export const metadata = {
   title: "Room Management | CareSanar HMS",

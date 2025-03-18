@@ -165,7 +165,6 @@ export function useAppointments() {
   // Handle new appointment creation
   const handleNewAppointment = useCallback(
     async (appointmentData: Partial<Appointment>) => {
-      console.log("the appointmentData parameter:", appointmentData);
 
       // Important: Format date to YYYY-MM-DD to prevent timezone issues
       // This ensures the date is stored exactly as selected without timezone offset

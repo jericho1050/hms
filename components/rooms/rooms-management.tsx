@@ -378,7 +378,6 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
       {viewMode === "grid" ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {filteredRooms.map((room) => {
-            console.log(room);
             const department = departments.find((d) => d.id === room.departmentId)
             const occupiedBeds = room.beds.filter((bed) => bed.patientId).length
 
