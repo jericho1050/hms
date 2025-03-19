@@ -282,6 +282,24 @@ CREATE TABLE public.staff (
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_staff_department ON public.staff USING btree (department) TABLESPACE pg_default;
 
+CREATE TABLE public.report_schedules (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  report_name TEXT NOT NULL,
+  report_type TEXT NOT NULL,
+  frequency TEXT NOT NULL,
+  file_format TEXT,
+  recipients TEXT NOT NULL,
+  filters JSONB NOT NULL,
+  next_run TIMESTAMP WITH TIME ZONE NOT NULL,
+  last_run TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Index for faster querying of reports due to be sent
+CREATE INDEX idx_report_schedules_next_run ON report_schedules(next_run);
+
 --------------------------------------------------------------------------------------------------------------
 
 ---------------- Functions ------------------------

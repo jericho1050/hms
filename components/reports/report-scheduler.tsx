@@ -18,6 +18,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
+import { format } from "date-fns"
+import { useToast } from "@/hooks/use-toast"
 
 const formSchema = z.object({
   reportName: z.string().min(2, "Report name must be at least 2 characters"),
@@ -33,22 +35,41 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>
 
 interface ReportSchedulerProps {
-  isOpen: boolean
   onClose: () => void
+  dateRange: { from: Date | undefined; to: Date | undefined }
+  departmentFilter: string
+  reportTypeFilter: string
+  activeTab: string
 }
 
-export function ReportScheduler({ isOpen, onClose }: ReportSchedulerProps) {
+export function ReportScheduler({ 
+  onClose, 
+  dateRange, 
+  departmentFilter, 
+  reportTypeFilter,
+  activeTab
+}: ReportSchedulerProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { toast } = useToast()
 
-  // Initialize the form
+  // Generate a default report name based on filters
+  const getDefaultReportName = () => {
+    const reportType = activeTab.charAt(0).toUpperCase() + activeTab.slice(1)
+    const department = departmentFilter === 'all' ? 'All Departments' : 
+      departmentFilter.charAt(0).toUpperCase() + departmentFilter.slice(1)
+    
+    return `${reportType} Report - ${department}`
+  }
+
+  // Initialize the form with pre-populated values
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      reportName: "",
-      reportType: "",
-      frequency: "",
+      reportName: getDefaultReportName(),
+      reportType: activeTab,
+      frequency: "monthly",
       emailRecipients: "",
-      fileFormat: "",
+      fileFormat: "pdf",
       includeCharts: true,
       includeTables: true,
       includeSummary: true,
@@ -60,26 +81,65 @@ export function ReportScheduler({ isOpen, onClose }: ReportSchedulerProps) {
     setIsSubmitting(true)
 
     try {
-      // In a real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      console.log("Scheduled report:", data)
+      // Format date range for report description
+      const fromDate = dateRange.from ? format(dateRange.from, 'MMM dd, yyyy') : 'earliest record'
+      const toDate = dateRange.to ? format(dateRange.to, 'MMM dd, yyyy') : 'latest record'
 
+      // Call the API to schedule the report
+      const response = await fetch('/api/scheduled-reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          reportName: data.reportName,
+          reportType: data.reportType,
+          frequency: data.frequency,
+          recipients: data.emailRecipients,
+          dateRange: {
+            from: dateRange.from ? dateRange.from.toISOString() : null,
+            to: dateRange.to ? dateRange.to.toISOString() : null
+          },
+          departmentFilter,
+          reportTypeFilter,
+          fileFormat: data.fileFormat,
+          includeCharts: data.includeCharts,
+          includeTables: data.includeTables,
+          includeSummary: data.includeSummary
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to schedule report');
+      }
+      
+      const result = await response.json();
+      
       // Show success message
-      alert("Report scheduled successfully!")
+      toast({
+        title: "Report Scheduled",
+        description: `Your ${data.reportType} report will be sent ${data.frequency}.`,
+      })
 
       // Close modal and reset form
       form.reset()
       onClose()
     } catch (error) {
       console.error("Error scheduling report:", error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to schedule report. Please try again.",
+        variant: "destructive",
+      })
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[550px]">
+    <Dialog open={true} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Schedule Regular Report</DialogTitle>
           <DialogDescription>Set up automated report generation and delivery on a regular schedule</DialogDescription>
@@ -233,6 +293,22 @@ export function ReportScheduler({ isOpen, onClose }: ReportSchedulerProps) {
                     </FormItem>
                   )}
                 />
+              </div>
+            </div>
+
+            <div className="bg-muted/50 p-3 rounded-md">
+              <h4 className="text-sm font-medium mb-2">Filters Applied</h4>
+              <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-medium">Date Range:</span> {dateRange.from ? format(dateRange.from, 'MMM dd, yyyy') : 'All time'} 
+                  - {dateRange.to ? format(dateRange.to, 'MMM dd, yyyy') : 'Present'}
+                </div>
+                <div>
+                  <span className="font-medium">Department:</span> {departmentFilter === 'all' ? 'All Departments' : departmentFilter}
+                </div>
+                <div>
+                  <span className="font-medium">Report Type:</span> {reportTypeFilter === 'all' ? 'All Types' : reportTypeFilter}
+                </div>
               </div>
             </div>
 
