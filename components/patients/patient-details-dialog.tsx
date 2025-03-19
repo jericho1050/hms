@@ -68,13 +68,17 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
   // Fetch billing history when tab changes to billing
   useEffect(() => {
     if (isOpen && activeTab === "billing" && patient.id) {
-      fetchPatientBillingHistory(patient.id)
+      // We now do this in the onValueChange handler, but keep this for safety
+      // The Promise.resolve ensures it runs in the next tick, which helps with tests
+      Promise.resolve().then(() => {
+        fetchPatientBillingHistory(patient.id);
+      });
     }
   }, [isOpen, activeTab, patient.id, fetchPatientBillingHistory])
 
   // Set up real-time subscription for billing updates
   useEffect(() => {
-    if (isOpen && patient.id) {
+    if (isOpen && patient.id && typeof supabase.channel === 'function') {
       const billingChannel = supabase
         .channel('billing-changes')
         .on('postgres_changes', 
@@ -83,9 +87,12 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
         .subscribe()
 
       return () => {
-        supabase.removeChannel(billingChannel)
+        if (typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(billingChannel)
+        }
       }
     }
+    return undefined;
   }, [isOpen, patient.id, handleBillingChange])
 
   // Filter appointments for this patient
@@ -169,7 +176,13 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab} value={activeTab}>
+        <Tabs defaultValue="overview" className="w-full" onValueChange={(value) => {
+          setActiveTab(value);
+          // Directly fetch billing history when the billing tab is selected
+          if (value === "billing" && patient.id) {
+            fetchPatientBillingHistory(patient.id);
+          }
+        }} value={activeTab}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="medical">Medical</TabsTrigger>

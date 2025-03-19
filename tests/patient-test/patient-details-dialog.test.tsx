@@ -1,14 +1,32 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { PatientDetailsDialog } from '../../components/patients/patient-details-dialog'
 import * as useAppointmentsModule from '@/hooks/use-appointments'
+import * as usePatientDataModule from '@/hooks/use-patient'
 import { format } from 'date-fns'
 import type { Patient } from '@/types/patients'
 import type { Appointment } from '@/types/appointments'
+import { useState, useEffect } from 'react'
+
+// Mock the Supabase client
+vi.mock('@/utils/supabase/client', () => ({
+    supabase: {
+        channel: vi.fn(() => ({
+            on: vi.fn().mockReturnThis(),
+            subscribe: vi.fn().mockReturnThis()
+        })),
+        removeChannel: vi.fn()
+    }
+}))
 
 // Mock the useAppointments hook
 vi.mock('@/hooks/use-appointments', () => ({
     useAppointments: vi.fn()
+}))
+
+// Mock the usePatientData hook
+vi.mock('@/hooks/use-patient', () => ({
+    usePatientData: vi.fn()
 }))
 
 // Mock date-fns to ensure consistent date formatting
@@ -98,6 +116,10 @@ describe('PatientDetailsDialog', () => {
         return Promise.resolve();
     });
 
+    const mockFetchPatientBillingHistory = vi.fn().mockImplementation(() => {
+        return Promise.resolve();
+    });
+
     beforeEach(() => {
         vi.clearAllMocks()
         vi.mocked(useAppointmentsModule.useAppointments).mockReturnValue({
@@ -110,6 +132,24 @@ describe('PatientDetailsDialog', () => {
             handleStatusChange: vi.fn(),
             handleNewAppointment: vi.fn(),
             getAppointmentsForDate: vi.fn()
+        })
+
+        vi.mocked(usePatientDataModule.usePatientData).mockReturnValue({
+            patients: [],
+            isLoading: false,
+            error: null,
+            patientAdmissionsData: [],
+            billingHistory: [],
+            isBillingLoading: false,
+            billingError: null,
+            fetchPatients: vi.fn(),
+            fetchPatientAdmissions: vi.fn(),
+            fetchPatientBillingHistory: mockFetchPatientBillingHistory,
+            createPatient: vi.fn(),
+            updatePatient: vi.fn(),
+            deletePatient: vi.fn(),
+            handlePatientChange: vi.fn(),
+            handleBillingChange: vi.fn()
         })
     })
 
@@ -139,8 +179,6 @@ describe('PatientDetailsDialog', () => {
         
         expect(mockFetchAppointments).toHaveBeenCalledTimes(1)
     })
-
-
 
     it('calls onClose when close button is clicked', () => {
         const handleClose = vi.fn()

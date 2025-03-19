@@ -292,18 +292,24 @@ export function usePatientData() {
     fetchPatients()
     fetchPatientAdmissions()
 
-    // Set up real-time subscription
-    const patientChannel = supabase
-      .channel('patients-changes')
-      .on('postgres_changes', 
-          { event: '*', schema: 'public', table: 'patients' }, 
-          handlePatientChange)
-      .subscribe()
+    // Set up real-time subscription - only if supabase.channel is available
+    if (typeof supabase.channel === 'function') {
+      const patientChannel = supabase
+        .channel('patients-changes')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'patients' }, 
+            handlePatientChange)
+        .subscribe()
 
-    // Cleanup subscription on unmount
-    return () => {
-      supabase.removeChannel(patientChannel)
+      // Cleanup subscription on unmount
+      return () => {
+        if (typeof supabase.removeChannel === 'function') {
+          supabase.removeChannel(patientChannel)
+        }
+      }
     }
+    
+    return undefined;
   }, [fetchPatients, fetchPatientAdmissions, handlePatientChange])
 
   return {
