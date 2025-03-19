@@ -15,6 +15,8 @@ import type { Room, Department, RoomStatus } from "@/types/rooms"
 import { assignBedToPatient, releaseBed } from "@/app/actions/rooms"
 import { useToast } from "@/hooks/use-toast"
 import { useStaff } from "@/hooks/use-staff"
+import { X } from "lucide-react"
+
 interface RoomsManagementProps {
   initialRooms: Room[]
   initialDepartments: Department[]
@@ -29,6 +31,7 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedId: string } | null>(null)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [showPatientPlacementDialog, setShowPatientPlacementDialog] = useState(false)
   const {staffId} = useStaff();
   const { toast } = useToast()
 
@@ -276,6 +279,28 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
     }
   }
 
+  const viewAvailableBeds = () => {
+    // Filter to show only rooms with available beds
+    const roomsWithAvailableBeds = rooms.filter(room => 
+      room.status === "available" || room.status === "partial"
+    );
+    
+    setFilteredRooms(roomsWithAvailableBeds);
+    setSelectedDepartment("all");
+    setSearchQuery("");
+    
+    toast({
+      title: "Available beds",
+      description: `Showing ${roomsWithAvailableBeds.length} rooms with available beds.`,
+      variant: "default",
+    });
+  }
+  
+  const openPatientPlacement = () => {
+    // Either open a dialog or navigate to patient placement view
+    setShowPatientPlacementDialog(true);
+  }
+
   return (
     <div className="space-y-6">
       {/* Status Overview */}
@@ -320,11 +345,11 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
             <CardTitle className="text-lg">Quick Actions</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            <Button className="w-full" variant="outline">
+            <Button className="w-full" variant="outline" onClick={viewAvailableBeds}>
               <BedIcon className="mr-2 h-4 w-4" />
               View All Available Beds
             </Button>
-            <Button className="w-full" variant="outline">
+            <Button className="w-full" variant="outline" onClick={openPatientPlacement}>
               <Users className="mr-2 h-4 w-4" />
               Patient Placement
             </Button>
@@ -519,6 +544,156 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
           }
         />
       )}
+
+      {/* Patient Placement Dialog */}
+      {showPatientPlacementDialog && (
+        <PatientPlacementDialog
+          departments={departments}
+          rooms={rooms}
+          onClose={() => setShowPatientPlacementDialog(false)}
+          onSelectBed={(roomId, bedId) => {
+            setSelectedBed({ roomId, bedId });
+            setShowPatientPlacementDialog(false);
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// Patient Placement Dialog Component
+interface PatientPlacementDialogProps {
+  departments: Department[]
+  rooms: Room[]
+  onClose: () => void
+  onSelectBed: (roomId: string, bedId: string) => void
+}
+
+function PatientPlacementDialog({ departments, rooms, onClose, onSelectBed }: PatientPlacementDialogProps) {
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
+  const [selectedRoomType, setSelectedRoomType] = useState<string>("all")
+  
+  // Get available room types
+  const roomTypes = Array.from(new Set(rooms.map(room => room.type)))
+  
+  // Filter available rooms based on criteria
+  const availableRooms = rooms.filter(room => {
+    if (selectedDepartment !== "all" && room.departmentId !== selectedDepartment) return false
+    if (selectedRoomType !== "all" && room.type !== selectedRoomType) return false
+    // Must have at least one available bed
+    return room.beds.some(bed => !bed.patientId)
+  })
+  
+  // Helper function for status badges
+  const getStatusBadgeForDialog = (status: RoomStatus) => {
+    switch (status) {
+      case "available":
+        return <Badge className="bg-green-500 hover:bg-green-600">Available</Badge>
+      case "partial":
+        return <Badge className="bg-yellow-500 hover:bg-yellow-600">Partially Occupied</Badge>
+      case "full":
+        return <Badge className="bg-red-500 hover:bg-red-600">Full</Badge>
+      default:
+        return <Badge variant="outline">Unknown</Badge>
+    }
+  }
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+      <div className="bg-background rounded-lg shadow-lg w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold">Patient Placement</h2>
+          <Button variant="ghost" size="icon" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label className="text-sm font-medium">Department</label>
+            <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Department" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Departments</SelectItem>
+                {departments.map((dept) => (
+                  <SelectItem key={dept.id} value={dept.id}>
+                    {dept.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium">Room Type</label>
+            <Select value={selectedRoomType} onValueChange={setSelectedRoomType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select Room Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                {roomTypes.map((type) => (
+                  <SelectItem key={type} value={type}>
+                    {type}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        
+        <div className="space-y-4 mt-6">
+          <h3 className="text-lg font-medium">Available Rooms</h3>
+          {availableRooms.length === 0 ? (
+            <p className="text-muted-foreground">No rooms match your criteria.</p>
+          ) : (
+            <div className="space-y-3">
+              {availableRooms.map(room => {
+                const department = departments.find(d => d.id === room.departmentId)
+                const availableBeds = room.beds.filter(bed => !bed.patientId)
+                
+                return (
+                  <div key={room.id} className="border rounded-md p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="font-medium">{room.type} - Room {room.roomNumber}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {department?.name}, Floor {room.floor}
+                        </p>
+                      </div>
+                      {getStatusBadgeForDialog(room.status)}
+                    </div>
+                    
+                    <div className="mt-4">
+                      <h5 className="text-sm font-medium mb-2">Available Beds ({availableBeds.length})</h5>
+                      <div className="grid grid-cols-2 gap-2">
+                        {availableBeds.map(bed => (
+                          <Button 
+                            key={bed.id}
+                            variant="outline"
+                            size="sm"
+                            className="justify-start"
+                            onClick={() => onSelectBed(room.id, bed.id)}
+                          >
+                            <BedIcon className="mr-2 h-4 w-4" />
+                            {bed.id.substring(0, 4)} {/* Using bed id substring instead of bedNumber */}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        
+        <div className="flex justify-end mt-6">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+        </div>
+      </div>
     </div>
   )
 }
