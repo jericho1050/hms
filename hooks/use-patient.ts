@@ -40,6 +40,23 @@ interface DbPatient {
   [key: string]: any // Allow additional fields for flexibility
 }
 
+// Define billing history interface
+export interface BillingRecord {
+  id: string
+  invoice_date: string
+  due_date: string | null
+  total_amount: number
+  payment_status: string
+  payment_method: string | null
+  payment_date: string | null
+  services: any
+  insurance_claim_id: string | null
+  insurance_coverage: number | null
+  discount: number | null
+  tax: number | null
+  notes: string | null
+  created_at: string
+}
 
 export interface PatientOperationResult {
   success?: boolean
@@ -52,6 +69,9 @@ export function usePatientData() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<any>(null)
   const [patientAdmissionsData, setPatientAdmissionsData] = useState<{ date: string; admissions: number }[]>([])
+  const [billingHistory, setBillingHistory] = useState<BillingRecord[]>([])
+  const [isBillingLoading, setIsBillingLoading] = useState(false)
+  const [billingError, setBillingError] = useState<any>(null)
 
   // Fetch patients data from Supabase client-side
   // This will be used for initial data loading in client components
@@ -81,6 +101,36 @@ export function usePatientData() {
       return { error: err }
     } finally {
       setIsLoading(false)
+    }
+  }, [])
+
+  // Fetch billing history for a specific patient
+  const fetchPatientBillingHistory = useCallback(async (patientId: string): Promise<PatientOperationResult> => {
+    setIsBillingLoading(true)
+    setBillingError(null)
+    
+    try {
+      const { data, error } = await supabase
+        .from('billing')
+        .select('*')
+        .eq('patient_id', patientId)
+        .order('invoice_date', { ascending: false })
+      
+      if (error) throw error
+      
+      if (data) {
+        setBillingHistory(data as BillingRecord[])
+      } else {
+        setBillingHistory([])
+      }
+      
+      return { success: true, data }
+    } catch (err) {
+      console.error("Error fetching patient billing history:", err)
+      setBillingError(err)
+      return { error: err }
+    } finally {
+      setIsBillingLoading(false)
     }
   }, [])
 
@@ -219,6 +269,23 @@ export function usePatientData() {
     }
   }, [])
 
+  // Handle real-time billing changes
+  const handleBillingChange = useCallback((payload: any, currentPatientId: string | null) => {
+    if (!currentPatientId) return;
+    
+    if (payload.eventType === 'INSERT' && payload.new.patient_id === currentPatientId) {
+      setBillingHistory(prev => [payload.new, ...prev]);
+    } else if (payload.eventType === 'UPDATE' && payload.new.patient_id === currentPatientId) {
+      setBillingHistory(prev => 
+        prev.map(record => record.id === payload.new.id ? payload.new : record)
+      );
+    } else if (payload.eventType === 'DELETE' && payload.old.patient_id === currentPatientId) {
+      setBillingHistory(prev => 
+        prev.filter(record => record.id !== payload.old.id)
+      );
+    }
+  }, []);
+
   // Set up real-time database changes
   useEffect(() => {
     // Initial data fetch
@@ -226,7 +293,7 @@ export function usePatientData() {
     fetchPatientAdmissions()
 
     // Set up real-time subscription
-    const channel = supabase
+    const patientChannel = supabase
       .channel('patients-changes')
       .on('postgres_changes', 
           { event: '*', schema: 'public', table: 'patients' }, 
@@ -235,7 +302,7 @@ export function usePatientData() {
 
     // Cleanup subscription on unmount
     return () => {
-      supabase.removeChannel(channel)
+      supabase.removeChannel(patientChannel)
     }
   }, [fetchPatients, fetchPatientAdmissions, handlePatientChange])
 
@@ -244,11 +311,16 @@ export function usePatientData() {
     isLoading,
     error,
     patientAdmissionsData,
+    billingHistory,
+    isBillingLoading,
+    billingError,
     fetchPatients,
     fetchPatientAdmissions,
+    fetchPatientBillingHistory,
     createPatient,
     updatePatient,
     deletePatient,
-    handlePatientChange
+    handlePatientChange,
+    handleBillingChange
   }
 }

@@ -30,7 +30,15 @@ import {
 import type { Patient } from "@/types/patients"
 import type { Appointment } from "@/types/appointments"
 import { useAppointments } from "@/hooks/use-appointments"
+import { usePatientData } from "@/hooks/use-patient"
 import { format, parseISO } from "date-fns"
+import { supabase } from "@/utils/supabase/client"
+
+// Define service types
+interface ServiceItem {
+  name: string;
+  cost: number;
+}
 
 interface PatientDetailsDialogProps {
   patient: Patient
@@ -40,7 +48,15 @@ interface PatientDetailsDialogProps {
 
 export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetailsDialogProps) {
   const { appointments, fetchAppointments, isLoading } = useAppointments()
+  const { 
+    fetchPatientBillingHistory, 
+    billingHistory, 
+    isBillingLoading, 
+    billingError,
+    handleBillingChange 
+  } = usePatientData()
   const [patientAppointments, setPatientAppointments] = useState<Appointment[]>([])
+  const [activeTab, setActiveTab] = useState("overview")
 
   // Fetch appointments when dialog opens
   useEffect(() => {
@@ -48,6 +64,29 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
       fetchAppointments()
     }
   }, [isOpen, fetchAppointments])
+
+  // Fetch billing history when tab changes to billing
+  useEffect(() => {
+    if (isOpen && activeTab === "billing" && patient.id) {
+      fetchPatientBillingHistory(patient.id)
+    }
+  }, [isOpen, activeTab, patient.id, fetchPatientBillingHistory])
+
+  // Set up real-time subscription for billing updates
+  useEffect(() => {
+    if (isOpen && patient.id) {
+      const billingChannel = supabase
+        .channel('billing-changes')
+        .on('postgres_changes', 
+            { event: '*', schema: 'public', table: 'billing' }, 
+            (payload: any) => handleBillingChange(payload, patient.id))
+        .subscribe()
+
+      return () => {
+        supabase.removeChannel(billingChannel)
+      }
+    }
+  }, [isOpen, patient.id, handleBillingChange])
 
   // Filter appointments for this patient
   useEffect(() => {
@@ -83,6 +122,34 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
     }
   }
 
+  // Format payment status for display
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case 'paid':
+        return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Paid</Badge>
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      case 'overdue':
+        return <Badge variant="destructive">Overdue</Badge>
+      case 'cancelled':
+        return <Badge variant="secondary">Cancelled</Badge>
+      case 'refunded':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Refunded</Badge>
+      case 'partial':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 hover:bg-purple-100">Partial</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  // Format currency for display
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+    }).format(amount)
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
@@ -102,7 +169,7 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs defaultValue="overview" className="w-full" onValueChange={setActiveTab} value={activeTab}>
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="medical">Medical</TabsTrigger>
@@ -386,11 +453,112 @@ export function PatientDetailsDialog({ patient, isOpen, onClose }: PatientDetail
 
           <TabsContent value="billing">
             <div className="border rounded-md p-4 mt-4">
-              <h3 className="font-medium flex items-center mb-2">
+              <h3 className="font-medium flex items-center mb-4">
                 <CreditCard className="h-4 w-4 mr-2" />
                 Billing History
               </h3>
-              <p className="text-sm text-muted-foreground">No billing history found</p>
+              
+              {isBillingLoading ? (
+                <div className="flex justify-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : billingHistory.length > 0 ? (
+                <div className="space-y-3">
+                  {billingHistory.map((bill) => (
+                    <div 
+                      key={bill.id} 
+                      className="border rounded-md p-3 hover:bg-muted/50 transition"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="font-medium flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            <span>Invoice Date: {new Date(bill.invoice_date).toLocaleDateString()}</span>
+                          </div>
+                          {bill.due_date && (
+                            <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Due Date: {new Date(bill.due_date).toLocaleDateString()}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div>{getPaymentStatusBadge(bill.payment_status)}</div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3 text-sm">
+                        <div className="font-semibold text-base">
+                          Total: {formatCurrency(bill.total_amount)}
+                        </div>
+                        {bill.payment_method && (
+                          <div>
+                            <span className="font-medium">Payment Method:</span>{" "}
+                            {bill.payment_method}
+                          </div>
+                        )}
+                        {bill.payment_date && (
+                          <div>
+                            <span className="font-medium">Payment Date:</span>{" "}
+                            {new Date(bill.payment_date).toLocaleDateString()}
+                          </div>
+                        )}
+                        {bill.insurance_claim_id && (
+                          <div>
+                            <span className="font-medium">Insurance Claim ID:</span>{" "}
+                            {bill.insurance_claim_id}
+                          </div>
+                        )}
+                        {bill.insurance_coverage && (
+                          <div>
+                            <span className="font-medium">Insurance Coverage:</span>{" "}
+                            {formatCurrency(bill.insurance_coverage)}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {typeof bill.services === 'object' && bill.services !== null && (
+                        <div className="mt-3">
+                          <div className="font-medium mb-1">Services:</div>
+                          <div className="bg-muted/50 p-2 rounded-md text-sm">
+                            <ul className="space-y-1">
+                              {Array.isArray(bill.services) ? 
+                                (bill.services as ServiceItem[]).map((service, index) => (
+                                  <li key={index} className="flex justify-between">
+                                    <span>{service.name}</span>
+                                    <span>{formatCurrency(service.cost)}</span>
+                                  </li>
+                                )) : 
+                                Object.entries(bill.services as Record<string, unknown>).map(([key, value]) => (
+                                  <li key={key} className="flex justify-between">
+                                    <span>{key}</span>
+                                    <span>
+                                      {typeof value === 'number' 
+                                        ? formatCurrency(value) 
+                                        : typeof value === 'string' 
+                                          ? value 
+                                          : JSON.stringify(value)}
+                                    </span>
+                                  </li>
+                                ))
+                              }
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {bill.notes && (
+                        <div className="mt-2 text-sm">
+                          <span className="font-medium">Notes:</span>
+                          <p className="mt-1 text-muted-foreground whitespace-pre-line">
+                            {bill.notes}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No billing history found</p>
+              )}
             </div>
           </TabsContent>
         </Tabs>
