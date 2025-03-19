@@ -1,4 +1,3 @@
-
 export interface StatsState {
   patientCount: number
   appointmentsToday: number
@@ -13,12 +12,12 @@ export interface StatsState {
   roomsAvailable: number
   // Add trend data
   trends: {
-    patientCount: string
-    appointmentsToday: string
-    staffCount: string
-    revenueThisMonth: string
-    bedOccupancy: string
-    inventoryItems: string
+    patientCount: number
+    appointmentsToday: number
+    staffCount: number
+    revenueThisMonth: number
+    bedOccupancy: number
+    inventoryItems: number
   }
   trendDirections: {
     patientCount: "up" | "down" | "neutral"
@@ -28,4 +27,17 @@ export interface StatsState {
     bedOccupancy: "up" | "down" | "neutral"
     inventoryItems: "up" | "down" | "neutral"
   }
+  // Appointment data for dashboard
+  appointmentsByDepartment: Array<{ department: string; count: number }>
+  appointmentsByType: Array<{ type: string; value: number }>
+  upcomingAppointments: Array<{
+    id: string
+    patientName: string
+    doctorName: string
+    department: string
+    date: string
+    startTime: string
+    endTime: string
+    status: string
+  }>
 }

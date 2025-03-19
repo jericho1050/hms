@@ -1,4 +1,3 @@
-
 import type React from "react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -18,7 +17,7 @@ export function StatsCard({
     value: string
     description: string
     icon: React.ReactNode
-    trend: string
+    trend: number
     trendDirection: "up" | "down" | "neutral"
   }) {
     return (
@@ -42,7 +41,7 @@ export function StatsCard({
                     : "text-muted-foreground"
               }
             >
-              {trend}
+              {Math.abs(trend).toFixed(1)}%
             </span>
             <span className="text-muted-foreground ml-1">vs. last month</span>
           </div>
