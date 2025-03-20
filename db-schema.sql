@@ -157,6 +157,8 @@ CREATE TABLE public.medical_records (
   notes text NULL,
   attachments text[] NULL,
   vital_signs jsonb NULL,
+  outcome text NULL,
+  readmission boolean DEFAULT false,
   CONSTRAINT medical_records_pkey PRIMARY KEY (id),
   CONSTRAINT medical_records_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES patients(id),
   CONSTRAINT medical_records_staff_id_fkey FOREIGN KEY (staff_id) REFERENCES staff(id)
