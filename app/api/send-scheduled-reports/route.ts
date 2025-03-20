@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/mail';
 import { Buffer } from 'buffer';
 import { createClient } from '@/utils/supabase/server';
 import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { drawBarChart, drawPieChart, extractChartData } from '@/utils/chart-helpers';
 
 interface ScheduledReport {
@@ -615,76 +616,69 @@ async function generatePdfReport(reportType: string, data: any, filters: ReportF
     yPosition += (splitSummary.length * 6) + 10;
   }
   
-  // Add table if requested - simple implementation without autoTable
+  // Add table if requested - use autoTable for better formatting
   if (filters.includeTables !== false && data.data && data.data.length > 0) {
-    // Extract headers from the first data object
-    const headers = Object.keys(data.data[0]);
-    
-    // Draw headers
-    const colWidth = 180 / headers.length;
-    const rowHeight = 10;
-    
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    
-    // Draw table header background
-    doc.setFillColor(41, 128, 185);
-    doc.rect(14, yPosition - 8, 180, rowHeight, 'F');
-    
-    // Draw header text
-    doc.setTextColor(255, 255, 255); // White text for header
-    headers.forEach((header, i) => {
-      doc.text(header, 14 + (i * colWidth), yPosition);
-    });
-    doc.setTextColor(0, 0, 0); // Reset text color
-    
-    // Draw rows
-    doc.setFont('helvetica', 'normal');
-    yPosition += rowHeight;
-    
-    data.data.forEach((row: any, rowIndex: number) => {
-      // Alternate row background
-      if (rowIndex % 2 === 1) {
-        doc.setFillColor(240, 240, 240);
-        doc.rect(14, yPosition - 8, 180, rowHeight, 'F');
-      }
+    try {
+      // Extract headers and prepare data for autoTable
+      const headers = Object.keys(data.data[0]);
+      const rows = data.data.map((row: any) => Object.values(row));
       
-      // Draw cell text
-      Object.values(row).forEach((value, colIndex) => {
-        doc.text(String(value).substring(0, 20), 14 + (colIndex * colWidth), yPosition);
+      // Calculate starting position based on current content
+      const tableStartY = yPosition + 10;
+      
+      // Create table using autoTable plugin
+      autoTable(doc,{
+        startY: tableStartY,
+        head: [headers],
+        body: rows,
+        theme: 'striped',
+        headStyles: { 
+          fillColor: [41, 128, 185],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold'
+        },
+        margin: { left: 14, right: 14 },
+        didDrawPage: (data: any) => {
+          // Update yPosition after drawing table
+          yPosition = data.cursor.y + 10;
+        }
       });
       
-      yPosition += rowHeight;
-      
-      // Add new page if needed
-      if (yPosition > doc.internal.pageSize.height - 20) {
-        doc.addPage();
-        yPosition = 20;
+      // Add totals or averages if available
+      if (data.totals || data.averages) {
+        const summary = data.totals || data.averages;
+        const summaryRows = Object.entries(summary).map(([key, value]) => [
+          key.toString(), 
+          value !== null && value !== undefined ? value.toString() : ''
+        ]);
+        
+        // Get position after previous table
+        const summaryStartY = (doc as any).lastAutoTable.finalY + 10;
+        
+        autoTable(doc,{
+          startY: summaryStartY,
+          head: [[data.totals ? 'Total' : 'Average', 'Value']],
+          body: summaryRows,
+          theme: 'grid',
+          headStyles: { 
+            fillColor: [41, 128, 185],
+            textColor: [255, 255, 255]
+          },
+          bodyStyles: { 
+            fontStyle: 'bold'
+          },
+          margin: { left: 14, right: 14 },
+          didDrawPage: (data: any) => {
+            // Update yPosition after drawing table
+            yPosition = data.cursor.y + 15;
+          }
+        });
       }
-    });
-    
-    yPosition += 10;
-    
-    // Add totals or averages if available
-    if (data.totals || data.averages) {
-      const summary = data.totals || data.averages;
-      
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      doc.text(data.totals ? 'Totals:' : 'Averages:', 14, yPosition);
-      doc.setFont('helvetica', 'normal');
-      
-      yPosition += 5;
-      
-      Object.entries(summary).forEach(([key, value], i) => {
-        yPosition += rowHeight;
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${key}:`, 14, yPosition);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`${value}`, 50, yPosition);
-      });
-      
-      yPosition += 15;
+    } catch (error) {
+      console.error("Error creating table in PDF:", error);
+      // Fallback to simple text if table fails
+      doc.text("Error generating table data", 14, yPosition + 10);
+      yPosition += 20;
     }
   }
   
@@ -718,23 +712,18 @@ async function generatePdfReport(reportType: string, data: any, filters: ReportF
         doc.setFontSize(10);
         doc.text(`Chart Type: ${chart.type.charAt(0).toUpperCase() + chart.type.slice(1)}`, 14, 170);
       }
-    } catch (chartError) {
-      console.error('Error generating charts:', chartError);
-      // If chart generation fails, add an explanation
+    } catch (error) {
+      console.error("Error adding charts to PDF:", error);
+      // Add an error page if charts fail
       doc.addPage();
       doc.setFontSize(14);
-      doc.text('Charts and Visualizations', 14, 20);
+      doc.text("Error generating charts", 14, 20);
       doc.setFontSize(11);
-      doc.text('Charts could not be generated. See report data for details.', 14, 40);
+      doc.text("The requested charts could not be generated.", 14, 30);
     }
   }
   
-  // Add closing
-  let finalY = doc.internal.pageSize.height - 20;
-  doc.setFontSize(10);
-  doc.text('This is an automatically generated report from the Hospital Management System.', 14, finalY);
-  
-  // Convert the PDF to a buffer
+  // Convert the PDF to a Buffer
   const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
   return pdfBuffer;
 }
