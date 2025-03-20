@@ -177,6 +177,7 @@ describe('AssignBedDialog', () => {
         
         expect(mockProps.onAssign).toHaveBeenCalledWith(
             '1', // patientId
+            'John Doe', // patientName - this was missing in the original test
             '2023-01-01T00:00:00', // admissionDate (mocked)
             undefined, // expectedDischargeDate
             false // isEmergency

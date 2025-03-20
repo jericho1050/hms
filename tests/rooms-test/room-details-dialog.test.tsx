@@ -4,15 +4,19 @@ import userEvent from '@testing-library/user-event'
 import { RoomDetailsDialog } from '../../components/rooms/room-details-dialog'
 import { Room, RoomStatus } from '@/types/rooms'
 
-// Mock the useRooms hook
+
+
+const mockGetRoomHistory = vi.fn().mockResolvedValue({
+    history: [
+        { action: 'Bed assigned', timestamp: '2023-05-10 13:45', user: 'Dr. Smith' },
+        { action: 'Room cleaned', timestamp: '2023-05-09 11:20', user: 'Housekeeping' }
+    ],
+    error: null
+})
+
 vi.mock('@/hooks/use-rooms', () => ({
     useRooms: () => ({
-        getRoomHistory: vi.fn().mockResolvedValue({
-            history: [
-                { action: 'Bed assigned', timestamp: '2023-05-10 13:45', user: 'Dr. Smith' },
-                { action: 'Room cleaned', timestamp: '2023-05-09 11:20', user: 'Housekeeping' }
-            ]
-        })
+        getRoomHistory: mockGetRoomHistory
     })
 }))
 
@@ -74,6 +78,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={vi.fn()}
             />
         )
         
@@ -90,6 +95,8 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory} 
+
             />
         )
         
@@ -106,6 +113,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory}
             />
         )
         
@@ -129,6 +137,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory} 
             />
         )
         
@@ -151,6 +160,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory} 
             />
         )
         
@@ -172,6 +182,8 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+
+                getRoomHistory={mockGetRoomHistory} 
             />
         )
         
@@ -190,6 +202,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory}
             />
         )
         
@@ -209,6 +222,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory}
             />
         )
         
@@ -237,6 +251,7 @@ describe('RoomDetailsDialog', () => {
                 onClose={onCloseMock}
                 onAssignBed={onAssignBedMock}
                 onReleaseBed={onReleaseBedMock}
+                getRoomHistory={mockGetRoomHistory}
             />
         )
         
