@@ -184,17 +184,44 @@ export type Database = {
           },
         ]
       }
+      financial_historical_metrics: {
+        Row: {
+          id: number
+          metric_name: string
+          metric_value: number
+          period: string
+          recorded_at: string | null
+        }
+        Insert: {
+          id?: number
+          metric_name: string
+          metric_value: number
+          period: string
+          recorded_at?: string | null
+        }
+        Update: {
+          id?: number
+          metric_name?: string
+          metric_value?: number
+          period?: string
+          recorded_at?: string | null
+        }
+        Relationships: []
+      }
       inventory: {
         Row: {
           category: string
           cost_per_unit: number | null
           created_at: string
+          description: string | null
           expiry_date: string | null
           id: string
           item_name: string
+          last_restocked: string | null
           location: string | null
           quantity: number
           reorder_level: number | null
+          sku: string | null
           status: string
           supplier: string | null
           unit: string | null
@@ -204,12 +231,15 @@ export type Database = {
           category: string
           cost_per_unit?: number | null
           created_at?: string
+          description?: string | null
           expiry_date?: string | null
           id?: string
           item_name: string
+          last_restocked?: string | null
           location?: string | null
           quantity: number
           reorder_level?: number | null
+          sku?: string | null
           status: string
           supplier?: string | null
           unit?: string | null
@@ -219,12 +249,15 @@ export type Database = {
           category?: string
           cost_per_unit?: number | null
           created_at?: string
+          description?: string | null
           expiry_date?: string | null
           id?: string
           item_name?: string
+          last_restocked?: string | null
           location?: string | null
           quantity?: number
           reorder_level?: number | null
+          sku?: string | null
           status?: string
           supplier?: string | null
           unit?: string | null
@@ -240,8 +273,10 @@ export type Database = {
           follow_up_date: string | null
           id: string
           notes: string | null
+          outcome: string | null
           patient_id: string
           prescription: Json | null
+          readmission: boolean | null
           record_date: string
           staff_id: string
           treatment: string | null
@@ -255,8 +290,10 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           notes?: string | null
+          outcome?: string | null
           patient_id: string
           prescription?: Json | null
+          readmission?: boolean | null
           record_date: string
           staff_id: string
           treatment?: string | null
@@ -270,8 +307,10 @@ export type Database = {
           follow_up_date?: string | null
           id?: string
           notes?: string | null
+          outcome?: string | null
           patient_id?: string
           prescription?: Json | null
+          readmission?: boolean | null
           record_date?: string
           staff_id?: string
           treatment?: string | null
@@ -462,6 +501,51 @@ export type Database = {
           status?: string
           updated_at?: string
           zip_code?: string | null
+        }
+        Relationships: []
+      }
+      report_schedules: {
+        Row: {
+          created_at: string
+          file_format: string | null
+          filters: Json
+          frequency: string
+          id: string
+          last_run: string | null
+          next_run: string
+          recipients: string
+          report_name: string
+          report_type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at: string
+          file_format?: string | null
+          filters: Json
+          frequency: string
+          id?: string
+          last_run?: string | null
+          next_run: string
+          recipients: string
+          report_name: string
+          report_type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_format?: string | null
+          filters?: Json
+          frequency?: string
+          id?: string
+          last_run?: string | null
+          next_run?: string
+          recipients?: string
+          report_name?: string
+          report_type?: string
+          updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -722,6 +806,10 @@ export type Database = {
       is_user_in_staff: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      recalculate_room_occupancy: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
     }
     Enums: {

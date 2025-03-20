@@ -20,6 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import type { InventoryItem } from "@/types/inventory"
+import { useState } from "react"
 
 const formSchema = z.object({
   name: z.string().min(2, {
@@ -55,10 +56,12 @@ const formSchema = z.object({
 interface AddInventoryItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onAdd: (item: InventoryItem) => void
+  onAdd: (item: Omit<InventoryItem, 'id'>) => void
 }
 
 export function AddInventoryItemDialog({ open, onOpenChange, onAdd }: AddInventoryItemDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -76,19 +79,28 @@ export function AddInventoryItemDialog({ open, onOpenChange, onAdd }: AddInvento
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newItem: InventoryItem = {
-      id: `item-${Date.now()}`,
-      ...values,
-      lastRestocked: new Date().toISOString(),
-      expiryDate: values.expiryDate ? values.expiryDate.toISOString() : undefined,
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    setIsSubmitting(true)
+    
+    try {
+      const newItem = {
+        ...values,
+        expiryDate: values.expiryDate ? values.expiryDate.toISOString() : undefined,
+      }
+      
+      await onAdd(newItem)
+      form.reset()
+    } finally {
+      setIsSubmitting(false)
     }
-    onAdd(newItem)
-    form.reset()
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!isSubmitting) {
+        onOpenChange(newOpen)
+      }
+    }}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Add New Inventory Item</DialogTitle>
@@ -232,7 +244,7 @@ export function AddInventoryItemDialog({ open, onOpenChange, onAdd }: AddInvento
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
-                          initialFocus
+                          autoFocus 
                         />
                       </PopoverContent>
                     </Popover>
@@ -285,10 +297,17 @@ export function AddInventoryItemDialog({ open, onOpenChange, onAdd }: AddInvento
             />
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => onOpenChange(false)}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
-              <Button type="submit">Add Item</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Adding..." : "Add Item"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

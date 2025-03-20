@@ -1,212 +1,231 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { AlertCircle, ArrowUpDown, Calendar, Edit, Eye, Plus, RefreshCw, Search } from "lucide-react"
+import { useState } from "react"
+import { AlertCircle, ArrowUpDown, Calendar, Edit, Eye, Plus, RefreshCw, Search, MoreVertical, Trash, ChevronLeft, ChevronRight } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { useInventory } from "@/hooks/use-inventory"
 import { AddInventoryItemDialog } from "./add-inventory-item-dialog"
 import { EditInventoryItemDialog } from "./edit-inventory-item-dialog"
 import { RestockItemDialog } from "./restock-item-dialog"
 import { ViewItemDetailsDialog } from "./view-item-details-dialog"
 import type { InventoryItem } from "@/types/inventory"
-import { getMockInventoryItems } from "@/lib/mock-inventory";
+import { 
+  addInventoryItem,
+  updateInventoryItem,
+  restockInventoryItem,
+  deleteInventoryItem
+} from "@/app/inventory/actions"
 
 export function InventoryManagement() {
   const { toast } = useToast()
-  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([])
-  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [sortColumn, setSortColumn] = useState<keyof InventoryItem>("name")
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
+  
+  // Use our custom hook for inventory data
+  const {
+    // Data
+    filteredItems,
+    totalItems,
+    totalPages,
+    stats,
+    
+    // State
+    isLoading,
+    
+    // Current values
+    page,
+    pageSize,
+    searchQuery,
+    categoryFilter,
+    statusFilter,
+    
+    // Actions
+    setSearchQuery,
+    handlePageChange,
+    handleSort,
+    handleCategoryChange,
+    handleStatusChange,
+    handleServerSearch,
+    refreshData
+  } = useInventory()
 
   // Dialog states
   const [addDialogOpen, setAddDialogOpen] = useState(false)
+  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [restockDialogOpen, setRestockDialogOpen] = useState(false)
-  const [viewDetailsDialogOpen, setViewDetailsDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
 
-  // Summary statistics
-  const totalItems = inventoryItems.length
-  const lowStockItems = inventoryItems.filter((item) => item.quantity <= item.reorderLevel).length
-  const expiringItems = inventoryItems.filter((item) => {
-    if (!item.expiryDate) return false
-    const expiryDate = new Date(item.expiryDate)
-    const today = new Date()
-    const thirtyDaysFromNow = new Date()
-    thirtyDaysFromNow.setDate(today.getDate() + 30)
-    return expiryDate <= thirtyDaysFromNow && expiryDate >= today
-  }).length
-
-  // Load inventory data
-  useEffect(() => {
-    const items = getMockInventoryItems()
-    setInventoryItems(items)
-    setFilteredItems(items)
-  }, [])
-
-  // Filter and sort items
-  useEffect(() => {
-    let result = [...inventoryItems]
-
-    // Apply search filter
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase()
-      result = result.filter(
-        (item) =>
-          item.name.toLowerCase().includes(query) ||
-          item.category.toLowerCase().includes(query) ||
-          item.sku.toLowerCase().includes(query),
-      )
-    }
-
-    // Apply category filter
-    if (categoryFilter !== "all") {
-      result = result.filter((item) => item.category === categoryFilter)
-    }
-
-    // Apply status filter
-    if (statusFilter !== "all") {
-      if (statusFilter === "low") {
-        result = result.filter((item) => item.quantity <= item.reorderLevel)
-      } else if (statusFilter === "expiring") {
-        result = result.filter((item) => {
-          if (!item.expiryDate) return false
-          const expiryDate = new Date(item.expiryDate)
-          const today = new Date()
-          const thirtyDaysFromNow = new Date()
-          thirtyDaysFromNow.setDate(today.getDate() + 30)
-          return expiryDate <= thirtyDaysFromNow && expiryDate >= today
-        })
-      } else if (statusFilter === "ok") {
-        result = result.filter(
-          (item) =>
-            item.quantity > item.reorderLevel &&
-            (!item.expiryDate || new Date(item.expiryDate) > new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)),
-        )
-      }
-    }
-
-    // Apply sorting
-    result.sort((a, b) => {
-      const aValue = a[sortColumn]
-      const bValue = b[sortColumn]
-
-      if (aValue === null || aValue === undefined) return sortDirection === "asc" ? -1 : 1
-      if (bValue === null || bValue === undefined) return sortDirection === "asc" ? 1 : -1
-
-      if (typeof aValue === "string" && typeof bValue === "string") {
-        return sortDirection === "asc" ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue)
-      }
-
-      return sortDirection === "asc" ? (aValue as number) - (bValue as number) : (bValue as number) - (aValue as number)
-    })
-
-    setFilteredItems(result)
-  }, [inventoryItems, searchQuery, categoryFilter, statusFilter, sortColumn, sortDirection])
-
-  // Handle sorting
-  const handleSort = (column: keyof InventoryItem) => {
-    if (sortColumn === column) {
-      setSortDirection(sortDirection === "asc" ? "desc" : "asc")
-    } else {
-      setSortColumn(column)
-      setSortDirection("asc")
+  // Handle search on Enter key
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      handleServerSearch()
     }
   }
 
   // Handle adding a new item
-  const handleAddItem = (item: InventoryItem) => {
-    setInventoryItems((prev) => [...prev, { ...item, id: `item-${prev.length + 1}` }])
-    toast({
-      title: "Item Added",
-      description: `${item.name} has been added to inventory.`,
-    })
-    setAddDialogOpen(false)
+  const handleAddItem = async (item: Omit<InventoryItem, "id">) => {
+    try {
+      const response = await addInventoryItem(item)
+      
+      if (!response.success) {
+        throw new Error(response.error)
+      }
+      
+      // Refresh data
+      refreshData()
+      
+      toast({
+        title: "Item Added",
+        description: `${item.name} has been added to inventory.`,
+      })
+      
+      setAddDialogOpen(false)
+    } catch (err) {
+      console.error("Failed to add inventory item:", err)
+      toast({
+        title: "Error",
+        description: "Failed to add inventory item. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  // Handle editing an item
-  const handleEditItem = (updatedItem: InventoryItem) => {
-    setInventoryItems((prev) => prev.map((item) => (item.id === updatedItem.id ? updatedItem : item)))
-    toast({
-      title: "Item Updated",
-      description: `${updatedItem.name} has been updated.`,
-    })
-    setEditDialogOpen(false)
+  // Handle updating an item
+  const handleUpdateItem = async (item: InventoryItem) => {
+    try {
+      const response = await updateInventoryItem(item)
+      
+      if (!response.success) {
+        throw new Error(response.error)
+      }
+      
+      // Refresh data
+      refreshData()
+      
+      toast({
+        title: "Item Updated",
+        description: `${item.name} has been updated.`,
+      })
+      
+      setEditDialogOpen(false)
+    } catch (err) {
+      console.error("Failed to update inventory item:", err)
+      toast({
+        title: "Error",
+        description: "Failed to update inventory item. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Handle restocking an item
-  const handleRestockItem = (itemId: string, quantity: number) => {
-    setInventoryItems((prev) =>
-      prev.map((item) => {
-        if (item.id === itemId) {
-          return {
-            ...item,
-            quantity: item.quantity + quantity,
-            lastRestocked: new Date().toISOString(),
-          }
-        }
-        return item
-      }),
-    )
-    const item = inventoryItems.find((item) => item.id === itemId)
-    toast({
-      title: "Item Restocked",
-      description: `${item?.name} has been restocked with ${quantity} units.`,
-    })
-    setRestockDialogOpen(false)
+  const handleRestockItem = async (id: string, quantity: number) => {
+    try {
+      const response = await restockInventoryItem(id, quantity)
+      
+      if (!response.success) {
+        throw new Error(response.error)
+      }
+      
+      // Refresh data
+      refreshData()
+      
+      toast({
+        title: "Item Restocked",
+        description: `Item has been restocked with ${quantity} units.`,
+      })
+      
+      setRestockDialogOpen(false)
+    } catch (err) {
+      console.error("Failed to restock inventory item:", err)
+      toast({
+        title: "Error",
+        description: "Failed to restock inventory item. Please try again.",
+        variant: "destructive",
+      })
+    }
+  }
+
+  // Handle deleting an item
+  const handleDeleteItem = async (itemId: string, itemName: string) => {
+    // Confirm before deleting
+    if (!confirm(`Are you sure you want to delete ${itemName}? This action cannot be undone.`)) {
+      return
+    }
+    
+    try {
+      const response = await deleteInventoryItem(itemId)
+      
+      if (!response.success) {
+        throw new Error(response.error)
+      }
+      
+      // Refresh data
+      refreshData()
+      
+      toast({
+        title: "Item Deleted",
+        description: `${itemName} has been removed from inventory.`,
+      })
+    } catch (err) {
+      console.error("Failed to delete inventory item:", err)
+      toast({
+        title: "Error",
+        description: "Failed to delete inventory item. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   // Get status badge for an item
   const getStatusBadge = (item: InventoryItem) => {
-    // Check if item is expired
-    if (item.expiryDate && new Date(item.expiryDate) < new Date()) {
-      return (
-        <Badge variant="destructive" className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" />
-          Expired
-        </Badge>
-      )
-    }
-
-    // Check if item is expiring soon
+    // Expiry date check
     if (item.expiryDate) {
       const expiryDate = new Date(item.expiryDate)
       const today = new Date()
       const thirtyDaysFromNow = new Date()
       thirtyDaysFromNow.setDate(today.getDate() + 30)
-
+      
       if (expiryDate <= thirtyDaysFromNow && expiryDate >= today) {
         return (
-          <Badge variant="outline" className="flex items-center gap-1 bg-amber-500 text-white border-amber-600">
-            <Calendar className="h-3 w-3" />
+          <Badge className="bg-amber-500 hover:bg-amber-600">
+            <Calendar className="mr-1 h-3 w-3" />
             Expiring Soon
+          </Badge>
+        )
+      } else if (expiryDate < today) {
+        return (
+          <Badge variant="destructive">
+            <AlertCircle className="mr-1 h-3 w-3" />
+            Expired
           </Badge>
         )
       }
     }
-
-    // Check if item is low in stock
+    
+    // Quantity check
     if (item.quantity <= item.reorderLevel) {
       return (
-        <Badge variant="destructive" className="flex items-center gap-1">
-          <AlertCircle className="h-3 w-3" />
+        <Badge variant="destructive">
+          <AlertCircle className="mr-1 h-3 w-3" />
           Low Stock
         </Badge>
       )
     }
-
-    // Item is OK
+    
     return (
-      <Badge variant="outline" className="flex items-center gap-1 bg-green-100 text-green-800 border-green-200">
+      <Badge variant="outline" className="bg-green-500 text-white hover:bg-green-600">
         In Stock
       </Badge>
     )
@@ -214,15 +233,14 @@ export function InventoryManagement() {
 
   return (
     <div className="space-y-6">
-      {/* Summary Cards */}
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Inventory Items</CardTitle>
+            <CardTitle className="text-sm font-medium">Total Items</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalItems}</div>
-            <p className="text-xs text-muted-foreground">Across all categories and locations</p>
+            <div className="text-2xl font-bold">{stats.totalItems}</div>
           </CardContent>
         </Card>
         <Card>
@@ -230,8 +248,7 @@ export function InventoryManagement() {
             <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{lowStockItems}</div>
-            <p className="text-xs text-muted-foreground">Items below reorder level</p>
+            <div className="text-2xl font-bold">{stats.lowStockItems}</div>
           </CardContent>
         </Card>
         <Card>
@@ -239,8 +256,7 @@ export function InventoryManagement() {
             <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-amber-600">{expiringItems}</div>
-            <p className="text-xs text-muted-foreground">Items expiring within 30 days</p>
+            <div className="text-2xl font-bold">{stats.expiringItems}</div>
           </CardContent>
         </Card>
       </div>
@@ -255,10 +271,11 @@ export function InventoryManagement() {
             className="w-full pl-8"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={handleSearchKeyDown}
           />
         </div>
 
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+        <Select value={categoryFilter} onValueChange={handleCategoryChange}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Category" />
           </SelectTrigger>
@@ -272,7 +289,7 @@ export function InventoryManagement() {
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select value={statusFilter} onValueChange={handleStatusChange}>
           <SelectTrigger className="w-full sm:w-40">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -285,9 +302,8 @@ export function InventoryManagement() {
         </Select>
 
         <div className="flex-1 flex justify-end">
-          <Button onClick={() => setAddDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Item
+          <Button onClick={() => setAddDialogOpen(true)} disabled={isLoading}>
+            <Plus className="mr-2 h-4 w-4" /> Add Item
           </Button>
         </div>
       </div>
@@ -297,63 +313,39 @@ export function InventoryManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("name")}
-                  className="flex items-center gap-1 p-0 font-medium"
-                >
-                  Item Name
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
+              <TableHead onClick={() => handleSort("name")} className="cursor-pointer">
+                Item Name
+                <ArrowUpDown className="inline ml-2 h-4 w-4" />
               </TableHead>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("category")}
-                  className="flex items-center gap-1 p-0 font-medium"
-                >
-                  Category
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
+              <TableHead onClick={() => handleSort("category")} className="cursor-pointer">
+                Category
+                <ArrowUpDown className="inline ml-2 h-4 w-4" />
               </TableHead>
-              <TableHead className="text-right">
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("quantity")}
-                  className="flex items-center gap-1 p-0 font-medium ml-auto"
-                >
-                  Quantity
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
+              <TableHead onClick={() => handleSort("quantity")} className="cursor-pointer">
+                Quantity
+                <ArrowUpDown className="inline ml-2 h-4 w-4" />
               </TableHead>
               <TableHead>Unit</TableHead>
-              <TableHead className="text-right">
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("reorderLevel")}
-                  className="flex items-center gap-1 p-0 font-medium ml-auto"
-                >
-                  Reorder Level
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
+              <TableHead onClick={() => handleSort("reorderLevel")} className="cursor-pointer">
+                Reorder Level
+                <ArrowUpDown className="inline ml-2 h-4 w-4" />
               </TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleSort("expiryDate")}
-                  className="flex items-center gap-1 p-0 font-medium"
-                >
-                  Expiry Date
-                  <ArrowUpDown className="h-4 w-4" />
-                </Button>
+              <TableHead onClick={() => handleSort("expiryDate")} className="cursor-pointer">
+                Expiry Date
+                <ArrowUpDown className="inline ml-2 h-4 w-4" />
               </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredItems.length === 0 ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  Loading...
+                </TableCell>
+              </TableRow>
+            ) : filteredItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={8} className="h-24 text-center">
                   No inventory items found.
@@ -362,79 +354,59 @@ export function InventoryManagement() {
             ) : (
               filteredItems.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
-                  <TableCell
-                    className={`text-right ${item.quantity <= item.reorderLevel ? "text-red-600 font-bold" : ""}`}
-                  >
+                  <TableCell className={item.quantity <= item.reorderLevel ? "text-red-600 font-medium" : ""}>
                     {item.quantity}
                   </TableCell>
                   <TableCell>{item.unit}</TableCell>
-                  <TableCell className="text-right">{item.reorderLevel}</TableCell>
+                  <TableCell>{item.reorderLevel}</TableCell>
                   <TableCell>{getStatusBadge(item)}</TableCell>
                   <TableCell>{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : "N/A"}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedItem(item)
-                                setViewDetailsDialogOpen(true)
-                              }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>View Details</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedItem(item)
-                                setEditDialogOpen(true)
-                              }}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit Item</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => {
-                                setSelectedItem(item)
-                                setRestockDialogOpen(true)
-                              }}
-                            >
-                              <RefreshCw className="h-4 w-4" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Restock</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={isLoading}>
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedItem(item)
+                            setViewDetailsDialogOpen(true)
+                          }}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedItem(item)
+                            setEditDialogOpen(true)
+                          }}
+                        >
+                          <Edit className="mr-2 h-4 w-4" />
+                          Edit Item
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => {
+                            setSelectedItem(item)
+                            setRestockDialogOpen(true)
+                          }}
+                        >
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Restock
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleDeleteItem(item.id, item.name)}
+                          className="text-red-600 focus:text-red-600 focus:bg-red-100"
+                        >
+                          <Trash className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               ))
@@ -442,30 +414,65 @@ export function InventoryManagement() {
           </TableBody>
         </Table>
       </div>
+      
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Showing {filteredItems && filteredItems.length > 0 ? (page - 1) * pageSize + 1 : 0}-
+          {Math.min(page * pageSize, totalItems)} of {totalItems} items
+        </div>
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page <= 1 || isLoading}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Previous
+          </Button>
+          <div className="text-sm">
+            Page {page} of {totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page >= totalPages || isLoading}
+          >
+            Next
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
+      </div>
 
       {/* Dialogs */}
-      <AddInventoryItemDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onAdd={handleAddItem} />
+      <AddInventoryItemDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAdd={handleAddItem}
+      />
 
       {selectedItem && (
         <>
+          <ViewItemDetailsDialog
+            open={viewDetailsDialogOpen}
+            onOpenChange={setViewDetailsDialogOpen}
+            item={selectedItem}
+          />
+
           <EditInventoryItemDialog
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
             item={selectedItem}
-            onEdit={handleEditItem}
+            onEdit={handleUpdateItem}
           />
 
           <RestockItemDialog
             open={restockDialogOpen}
             onOpenChange={setRestockDialogOpen}
             item={selectedItem}
-            onRestock={handleRestockItem}
-          />
-
-          <ViewItemDetailsDialog
-            open={viewDetailsDialogOpen}
-            onOpenChange={setViewDetailsDialogOpen}
-            item={selectedItem}
+            onRestock={(quantity) => handleRestockItem(selectedItem.id, Number(quantity))}
           />
         </>
       )}

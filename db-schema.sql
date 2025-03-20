@@ -139,9 +139,13 @@ CREATE TABLE public.inventory (
   location text NULL,
   expiry_date date NULL,
   status text NOT NULL,
+  sku text,
+  description text,
+  last_restocked timestamp with time zone,
   CONSTRAINT inventory_pkey PRIMARY KEY (id)
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_inventory_low_stock ON public.inventory USING btree (quantity)  TABLESPACE pg_default WHERE (quantity <= reorder_level);
+CREATE INDEX IF NOT EXISTS idx_inventory_sku ON public.inventory(sku);
 
 CREATE TABLE public.medical_records (
   id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
@@ -609,6 +613,47 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Function to automatically update the last_restocked timestamp
+CREATE OR REPLACE FUNCTION update_last_restocked()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF OLD.quantity < NEW.quantity THEN
+    NEW.last_restocked = NOW();
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to automatically update the status based on quantity and reorder_level
+CREATE OR REPLACE FUNCTION update_inventory_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.quantity <= NEW.reorder_level THEN
+    NEW.status = 'low';
+  ELSE
+    NEW.status = 'in-stock';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to check for expiring items
+CREATE OR REPLACE FUNCTION update_expiring_status()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Check if item is expiring within 30 days
+  IF NEW.expiry_date IS NOT NULL AND 
+     NEW.expiry_date <= CURRENT_DATE + INTERVAL '30 days' AND 
+     NEW.expiry_date >= CURRENT_DATE THEN
+    NEW.status = 'expiring-soon';
+  -- Check if item is expired
+  ELSIF NEW.expiry_date IS NOT NULL AND 
+        NEW.expiry_date < CURRENT_DATE THEN
+    NEW.status = 'expired';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
 
 ---------------------------------------------------------------------------
 
@@ -630,6 +675,24 @@ FOR EACH ROW
 WHEN (OLD.current_occupancy IS DISTINCT FROM NEW.current_occupancy)
 EXECUTE FUNCTION update_room_status();
 
+-- Trigger to automatically update last_restocked when quantity increases
+CREATE TRIGGER update_inventory_last_restocked
+BEFORE UPDATE ON public.inventory
+FOR EACH ROW
+WHEN (OLD.quantity < NEW.quantity)
+EXECUTE FUNCTION update_last_restocked();
+
+-- Trigger to automatically update status based on quantity and reorder_level
+CREATE TRIGGER update_inventory_status_trigger
+BEFORE INSERT OR UPDATE ON public.inventory
+FOR EACH ROW
+EXECUTE FUNCTION update_inventory_status();
+
+-- Trigger for updating expiring status
+CREATE TRIGGER update_expiry_status_trigger
+BEFORE INSERT OR UPDATE ON public.inventory
+FOR EACH ROW
+EXECUTE FUNCTION update_expiring_status();
 
 -- Create triggers to run after changes to billing table
 CREATE TRIGGER update_financial_metrics_after_insert

@@ -1,26 +1,20 @@
-import type { Metadata } from "next"
-import { Suspense } from "react"
+
+
 import { InventoryManagement } from "@/components/inventory/inventory-management"
-import { InventoryPageSkeleton } from "@/components/inventory/inventory-page-skeleton"
 
-export const metadata: Metadata = {
-  title: "Inventory Management | CareSanar HMS",
-  description: "Manage hospital inventory items, track stock levels, and monitor expiry dates.",
-}
+export const dynamic = 'force-dynamic'
 
-export default function InventoryPage() {
+export default async function InventoryPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
+    <div className="flex flex-col gap-8 p-8">
+      <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Inventory Management</h1>
         <p className="text-muted-foreground">
-          Manage hospital inventory items, track stock levels, and monitor expiry dates.
+          Track, manage, and order inventory items for the hospital.
         </p>
       </div>
-
-      <Suspense fallback={<InventoryPageSkeleton />}>
+      
         <InventoryManagement />
-      </Suspense>
     </div>
   )
 }

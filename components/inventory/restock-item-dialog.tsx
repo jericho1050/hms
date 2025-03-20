@@ -25,7 +25,7 @@ interface RestockItemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   item: InventoryItem
-  onRestock: (itemId: string, quantity: number) => void
+  onRestock: (quantity: number) => void
 }
 
 export function RestockItemDialog({ open, onOpenChange, item, onRestock }: RestockItemDialogProps) {
@@ -37,7 +37,7 @@ export function RestockItemDialog({ open, onOpenChange, item, onRestock }: Resto
   })
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    onRestock(item.id, values.quantity)
+    onRestock(values.quantity)
     form.reset({ quantity: 1 })
   }
 
