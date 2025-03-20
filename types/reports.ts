@@ -167,3 +167,53 @@ export type ClinicalMetrics = {
     change: number;
   };
 }
+
+// Add new interface for room occupancy history
+export interface RoomOccupancyHistory {
+  room_id: string | null;
+  room_number: string | null;
+  department_id: string | null;
+  department_name: string | null;
+  date: string | null;
+  patients_admitted: number | null;
+  current_patients: number | null;
+  capacity: number | null;
+  occupancy_rate: number | null;
+}
+
+// Add operational metrics interface
+export interface OperationalMetrics {
+  appointmentCompletionRate?: number;
+  noShowRate?: number;
+  averageWaitTime?: number;
+  bedOccupancyRate?: number;
+  roomUtilization?: Array<{
+    room: string;
+    utilizationRate: number;
+  }>;
+  staffUtilization?: Array<{
+    department: string;
+    utilizationRate: number;
+  }>;
+  bedOccupancy?: Array<BedOccupancy>;
+  staffPerformance?: Array<{
+    category: string;
+    nursing: number;
+    physicians: number;
+    support: number;
+  }>;
+  inventoryStatus?: Array<{
+    category: string;
+    inStock: number;
+    onOrder: number;
+    critical: boolean;
+  }>;
+  dailyAdmissions?: Array<{
+    day: string;
+    emergency: number;
+    scheduled: number;
+  }>;
+  staffUtilizationRate?: number;
+  staffUtilizationChange?: number;
+  roomOccupancyHistory?: RoomOccupancyHistory[];
+}

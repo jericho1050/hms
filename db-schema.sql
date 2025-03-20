@@ -302,6 +302,17 @@ CREATE TABLE public.report_schedules (
 -- Index for faster querying of reports due to be sent
 CREATE INDEX idx_report_schedules_next_run ON report_schedules(next_run);
 
+CREATE TABLE financial_historical_metrics (
+  id SERIAL PRIMARY KEY,
+  period VARCHAR(20) NOT NULL, -- e.g., "2023-01", "2023-Q1"
+  metric_name VARCHAR(50) NOT NULL, -- e.g., "revenue", "outstanding_bills"
+  metric_value NUMERIC NOT NULL,
+  recorded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for faster queries on financial historical metrics
+CREATE INDEX idx_financial_metrics_period_name ON financial_historical_metrics(period, metric_name);
+
 --------------------------------------------------------------------------------------------------------------
 
 ---------------- Functions ------------------------
@@ -521,6 +532,84 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- PostgreSQL trigger to automatically update financial metrics
+-- Run this script in your Supabase SQL editor
+
+-- First, add a unique constraint to prevent duplicate period/metric combinations
+ALTER TABLE financial_historical_metrics 
+ADD CONSTRAINT unique_period_metric UNIQUE (period, metric_name);
+
+-- Function to calculate and update financial metrics
+CREATE OR REPLACE FUNCTION update_financial_historical_metrics()
+RETURNS TRIGGER AS $$
+DECLARE
+  current_period VARCHAR(20);
+  total_revenue NUMERIC;
+  outstanding_bills NUMERIC;
+  insurance_claims INTEGER;
+  collection_rate NUMERIC;
+BEGIN
+  -- Get current period (format: YYYY-MM)
+  current_period := to_char(CURRENT_DATE, 'YYYY-MM');
+  
+  -- Calculate total revenue for current period
+  SELECT COALESCE(SUM(total_amount), 0) INTO total_revenue
+  FROM billing
+  WHERE to_char(invoice_date, 'YYYY-MM') = current_period;
+  
+  -- Calculate outstanding bills for current period
+  SELECT COALESCE(SUM(total_amount), 0) INTO outstanding_bills
+  FROM billing
+  WHERE to_char(invoice_date, 'YYYY-MM') = current_period
+  AND payment_status = 'pending';
+  
+  -- Calculate insurance claims for current period
+  SELECT COUNT(*) INTO insurance_claims
+  FROM billing
+  WHERE to_char(invoice_date, 'YYYY-MM') = current_period
+  AND insurance_claim_id IS NOT NULL;
+  
+  -- Calculate collection rate for current period
+  SELECT 
+    CASE 
+      WHEN SUM(total_amount) > 0 
+      THEN (SUM(CASE WHEN payment_status = 'paid' THEN total_amount ELSE 0 END) / SUM(total_amount)) * 100
+      ELSE 0
+    END INTO collection_rate
+  FROM billing
+  WHERE to_char(invoice_date, 'YYYY-MM') = current_period;
+  
+  -- Upsert metrics (insert or update if exists)
+  
+  -- Revenue
+  INSERT INTO financial_historical_metrics (period, metric_name, metric_value)
+  VALUES (current_period, 'revenue', total_revenue)
+  ON CONFLICT (period, metric_name) 
+  DO UPDATE SET metric_value = EXCLUDED.metric_value, recorded_at = NOW();
+  
+  -- Outstanding bills
+  INSERT INTO financial_historical_metrics (period, metric_name, metric_value)
+  VALUES (current_period, 'outstanding_bills', outstanding_bills)
+  ON CONFLICT (period, metric_name) 
+  DO UPDATE SET metric_value = EXCLUDED.metric_value, recorded_at = NOW();
+  
+  -- Insurance claims
+  INSERT INTO financial_historical_metrics (period, metric_name, metric_value)
+  VALUES (current_period, 'insurance_claims', insurance_claims)
+  ON CONFLICT (period, metric_name) 
+  DO UPDATE SET metric_value = EXCLUDED.metric_value, recorded_at = NOW();
+  
+  -- Collection rate
+  INSERT INTO financial_historical_metrics (period, metric_name, metric_value)
+  VALUES (current_period, 'collection_rate', collection_rate)
+  ON CONFLICT (period, metric_name) 
+  DO UPDATE SET metric_value = EXCLUDED.metric_value, recorded_at = NOW();
+  
+  RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
 ---------------------------------------------------------------------------
 
 --------------- Triggers ------------------------
@@ -540,6 +629,26 @@ BEFORE UPDATE ON public.rooms
 FOR EACH ROW
 WHEN (OLD.current_occupancy IS DISTINCT FROM NEW.current_occupancy)
 EXECUTE FUNCTION update_room_status();
+
+
+-- Create triggers to run after changes to billing table
+CREATE TRIGGER update_financial_metrics_after_insert
+AFTER INSERT ON billing
+FOR EACH STATEMENT
+EXECUTE FUNCTION update_financial_historical_metrics();
+
+CREATE TRIGGER update_financial_metrics_after_update
+AFTER UPDATE ON billing
+FOR EACH STATEMENT
+EXECUTE FUNCTION update_financial_historical_metrics();
+
+CREATE TRIGGER update_financial_metrics_after_delete
+AFTER DELETE ON billing
+FOR EACH STATEMENT
+EXECUTE FUNCTION update_financial_historical_metrics();
+
+-- Optional: Run the function once to populate current metrics
+SELECT update_financial_historical_metrics(); 
 
 -------------------------------------------------
 
