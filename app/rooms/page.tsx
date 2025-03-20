@@ -9,8 +9,6 @@ export const metadata = {
 }
 
 export default async function RoomsPage() {
-  const { rooms } = await getRoomsData()
-  const { departments } = await getDepartmentsData()
   
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -22,7 +20,7 @@ export default async function RoomsPage() {
       </div>
 
       <Suspense fallback={<RoomsPageSkeleton />}>
-        <RoomsManagement initialRooms={rooms} initialDepartments={departments} />
+        <RoomsManagement />
       </Suspense>
     </div>
   )

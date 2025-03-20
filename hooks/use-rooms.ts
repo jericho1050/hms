@@ -315,9 +315,12 @@ export function useRooms() {
     getDepartmentsData();
   }, [getRoomsData, getDepartmentsData]);
 
+  
   return {
     rooms,
+    setRooms,
     departments,
+    setDepartments,
     isLoading,
     error,
     getRoomsData,

@@ -17,7 +17,6 @@ import { Textarea } from "@/components/ui/textarea"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { supabase } from "@/utils/supabase/client"
 import type { Room, Department, Bed, RoomHistoryEvent } from "@/types/rooms"
-import { useRooms } from "@/hooks/use-rooms"
 
 interface RoomDetailsDialogProps {
   room: Room
@@ -25,15 +24,20 @@ interface RoomDetailsDialogProps {
   onClose: () => void
   onAssignBed: (bedId: string) => void
   onReleaseBed: (bedId: string, notes?: string) => void
+  getRoomHistory: (roomId: string) => Promise<{ history: RoomHistoryEvent[], error: null} | {
+    history: never[];
+    error: string;
+}>
 }
 
-export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onReleaseBed }: RoomDetailsDialogProps) {
+export function RoomDetailsDialog({ room, department, onClose, onAssignBed, onReleaseBed, getRoomHistory}: RoomDetailsDialogProps) {
   const [releaseDialogOpen, setReleaseDialogOpen] = useState(false)
   const [selectedBedId, setSelectedBedId] = useState<string | null>(null)
   const [releaseNotes, setReleaseNotes] = useState("")
   const [history, setHistory] = useState<RoomHistoryEvent[]>([])
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const {getRoomHistory} = useRooms();
+
+
   useEffect(() => {
     const fetchRoomHistory = async () => {
       if (!room) return

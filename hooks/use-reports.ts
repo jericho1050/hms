@@ -1,3 +1,4 @@
+import { ClinicalMetrics, DemographicData, AgeData, AppointmentStats, BedOccupancy, DeptCounts, FinancialGrowth, FinancialSummary, InsuranceClaim, PatientDemographics, PaymentDistribution, RevenueDept, RevenueTrend, StaffDeptMap } from './../types/reports';
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, formatDate, subMonths, subYears, eachMonthOfInterval } from "date-fns";
 import { supabase } from "@/utils/supabase/client";
@@ -5,168 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { DeptOccupancy } from "@/types/reports";
 
 
-type RevenueDept = {
-  name: string;
-  revenue: number;
-  target: number;
-}
-
-type InsuranceClaim = {
-  id: string;
-  patient: string;
-  amount: number;
-  status: string;
-  provider: string;
-  submittedDate: string;
-  paidDate: string | null;
-}
-
-type DemographicData = {
-  gender: string;
-  count: number;
-}
-
-type AgeData = {
-  age: string;
-  count: number;
-}
-
-type PatientDemographics = {
-  genderDistribution: DemographicData[];
-  ageDistribution: AgeData[];
-}
-
-type AppointmentStats = {
-  totalAppointments: number;
-  completedAppointments: number;
-  noShowAppointments: number;
-  pendingAppointments: number;
-  completionRate: number;
-  noShowRate: number;
-}
-
-type BedOccupancy = {
-  department: string;
-  total: number;
-  occupied: number;
-  available: number;
-}
-
-type FinancialSummary = {
-  totalRevenue: number;
-  outstandingBills: number;
-  insuranceClaimsCount: number;
-  collectionRate: number;
-}
-
-type FinancialGrowth = {
-  revenueGrowth: number;
-  outstandingBillsGrowth: number;
-  insuranceClaimsGrowth: number;
-  collectionRateGrowth: number;
-}
-
-type RevenueTrend = {
-  month: string;
-  revenue: number;
-  expenses: number;
-}
-
-type PaymentDistribution = {
-  name: string;
-  value: number;
-}
-
-type StaffDeptMap = {
-  [key: string]: string;
-}
-
-type DeptCounts = {
-  [key: string]: number;
-}
-
-type FilterState = {
-  dateRange: { from: Date | undefined; to: Date | undefined };
-  departmentFilter: string;
-  reportTypeFilter: string;
-}
-
-// Add interfaces for clinical metrics and medical records
-type MedicalRecord = {
-  id: string;
-  patient_id: string;
-  staff_id: string;
-  record_date: string;
-  diagnosis: string;
-  treatment: string;
-  prescription: any;
-  follow_up_date: string | null;
-  notes: string | null;
-  attachments: string[] | null;
-  vital_signs: any;
-}
-
-type DiagnosisCount = {
-  name: string;
-  count: number;
-}
-
-type TreatmentOutcome = {
-  treatment: string;
-  success: number;
-  failure: number;
-}
-
-type PatientOutcome = {
-  month: string;
-  improved: number;
-  stable: number;
-  deteriorated: number;
-}
-
-type ReadmissionRate = {
-  month: string;
-  rate: number;
-}
-
-type CommonProcedure = {
-  procedure: string;
-  count: number;
-  avgTime: number;
-  complicationRate: number;
-}
-
-type ClinicalMetrics = {
-  patientsByAge?: Array<{
-    age: string;
-    count: number;
-  }>;
-  patientsByGender?: Array<{
-    gender: string;
-    count: number;
-  }>;
-  diagnosisFrequency?: DiagnosisCount[];
-  treatmentOutcomes?: TreatmentOutcome[];
-  patientOutcomes?: PatientOutcome[];
-  readmissionRates?: ReadmissionRate[];
-  commonProcedures?: CommonProcedure[];
-  patientSatisfaction?: {
-    rate: number;
-    change: number;
-  };
-  lengthOfStay?: {
-    days: number;
-    change: number;
-  };
-  readmissionRate?: {
-    rate: number;
-    change: number;
-  };
-  mortalityRate?: {
-    rate: number;
-    change: number;
-  };
-}
 
 export function useReports() {
   const { toast } = useToast();
@@ -184,10 +23,7 @@ export function useReports() {
   // Data states
   const [revenueByDept, setRevenueByDept] = useState<RevenueDept[]>([]);
   const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaim[]>([]);
-  const [patientDemographics, setPatientDemographics] = useState<PatientDemographics>({
-    genderDistribution: [],
-    ageDistribution: []
-  });
+
   const [appointmentStats, setAppointmentStats] = useState<AppointmentStats>({
     totalAppointments: 0,
     completedAppointments: 0,
@@ -240,7 +76,7 @@ export function useReports() {
       await loadFinancialData(fromDate, toDate)
 
       // Load patient demographics
-      await loadPatientDemographics()
+      const patientDemographics = await loadPatientDemographics()
 
       // Load appointment statistics
       await loadAppointmentStats(fromDate, toDate)
@@ -249,7 +85,7 @@ export function useReports() {
       await loadBedOccupancy()
 
       // Load clinical metrics from medical records
-      await loadClinicalMetrics(fromDate, toDate)
+      await loadClinicalMetrics(fromDate, toDate, patientDemographics);
 
     } catch (error) {
       console.error("Error loading data:", error)
@@ -564,13 +400,18 @@ export function useReports() {
       // Format for charts
       const genderData = Object.entries(genderCounts).map(([gender, count]) => ({ gender, count }))
       const ageData = Object.entries(ageCounts).map(([age, count]) => ({ age, count }))
-
-      setPatientDemographics({
+      
+      return {
         genderDistribution: genderData,
         ageDistribution: ageData
-      })
-    } catch (error) {
+      }
+   } catch (error) {
       console.error("Error loading patient demographics:", error)
+      // Return empty arrays if there's an error
+      return {
+        genderDistribution: [],
+        ageDistribution: []
+      }
     }
   }
 
@@ -665,7 +506,8 @@ export function useReports() {
   }
 
   // Load clinical metrics from medical records
-  const loadClinicalMetrics = async (fromDate: string, toDate: string) => {
+  const loadClinicalMetrics = async (fromDate: string, toDate: string, patientDemographics: PatientDemographics) => {
+    console.log("my clinical demographics", patientDemographics)
     try {
       // Get medical records
       let recordsQuery = supabase
@@ -915,8 +757,8 @@ export function useReports() {
         treatmentOutcomes,
         patientOutcomes,
         readmissionRates,
-        patientsByAge: clinicalMetrics.patientsByAge, // Preserve existing data
-        patientsByGender: clinicalMetrics.patientsByGender, // Preserve existing data
+        patientsByAge: patientDemographics?.ageDistribution || [],// Preserve existing data
+        patientsByGender: patientDemographics?.genderDistribution || [], // Preserve existing data
         patientSatisfaction: {
           rate: 85, // Placeholder - would come from patient survey data
           change: 2.5
@@ -954,11 +796,32 @@ export function useReports() {
     })
   }
 
-  // Export functionality
-  const exportReport = async (format: string) => {
-    // This is left to be implemented in the page component as it requires UI libraries like jsPDF
-    return { format, success: true };
-  };
+  // // Export functionality
+  // const exportReport = async (format: string) => {
+  //   // This is left to be implemented in the page component as it requires UI libraries like jsPDF
+  //   return { format, success: true };
+  // };
+
+  // Function to calculate average wait time from appointments if possible
+const calculateAverageWaitTime = () => {
+  // If you don't have appointment duration or wait time data in your schema
+  // Return null to indicate it's not available
+  return null;
+};
+
+// Function to check if staff utilization can be calculated
+const isStaffUtilizationAvailable = false; // Set to true if you add this data to your schema
+
+// Function to fetch staff utilization from Supabase
+const fetchStaffUtilization = async () => {
+  try {
+    // This would be implemented if you had the appropriate table
+    return null;
+  } catch (error) {
+    console.error("Error fetching staff utilization:", error);
+    return null;
+  }
+};
 
   return {
     // State
@@ -971,7 +834,6 @@ export function useReports() {
     // Data
     revenueByDept,
     insuranceClaims,
-    patientDemographics,
     appointmentStats,
     bedOccupancy,
     financialSummary,
@@ -985,7 +847,8 @@ export function useReports() {
     setDepartmentFilter,
     setReportTypeFilter,
     refreshData,
-    exportReport,
+    calculateAverageWaitTime,
+    fetchStaffUtilization,
     loadData
   };
 } 
