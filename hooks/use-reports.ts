@@ -91,6 +91,83 @@ type FilterState = {
   reportTypeFilter: string;
 }
 
+// Add interfaces for clinical metrics and medical records
+type MedicalRecord = {
+  id: string;
+  patient_id: string;
+  staff_id: string;
+  record_date: string;
+  diagnosis: string;
+  treatment: string;
+  prescription: any;
+  follow_up_date: string | null;
+  notes: string | null;
+  attachments: string[] | null;
+  vital_signs: any;
+}
+
+type DiagnosisCount = {
+  name: string;
+  count: number;
+}
+
+type TreatmentOutcome = {
+  treatment: string;
+  success: number;
+  failure: number;
+}
+
+type PatientOutcome = {
+  month: string;
+  improved: number;
+  stable: number;
+  deteriorated: number;
+}
+
+type ReadmissionRate = {
+  month: string;
+  rate: number;
+}
+
+type CommonProcedure = {
+  procedure: string;
+  count: number;
+  avgTime: number;
+  complicationRate: number;
+}
+
+type ClinicalMetrics = {
+  patientsByAge?: Array<{
+    age: string;
+    count: number;
+  }>;
+  patientsByGender?: Array<{
+    gender: string;
+    count: number;
+  }>;
+  diagnosisFrequency?: DiagnosisCount[];
+  treatmentOutcomes?: TreatmentOutcome[];
+  patientOutcomes?: PatientOutcome[];
+  readmissionRates?: ReadmissionRate[];
+  commonProcedures?: CommonProcedure[];
+  patientSatisfaction?: {
+    rate: number;
+    change: number;
+  };
+  lengthOfStay?: {
+    days: number;
+    change: number;
+  };
+  readmissionRate?: {
+    rate: number;
+    change: number;
+  };
+  mortalityRate?: {
+    rate: number;
+    change: number;
+  };
+}
+
 export function useReports() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
@@ -135,6 +212,9 @@ export function useReports() {
     collectionRateGrowth: 0
   });
 
+  // Add clinical metrics state
+  const [clinicalMetrics, setClinicalMetrics] = useState<ClinicalMetrics>({});
+
   // Load data when filters change
   useEffect(() => {
     loadData();
@@ -167,6 +247,9 @@ export function useReports() {
 
       // Load bed occupancy
       await loadBedOccupancy()
+
+      // Load clinical metrics from medical records
+      await loadClinicalMetrics(fromDate, toDate)
 
     } catch (error) {
       console.error("Error loading data:", error)
@@ -581,6 +664,283 @@ export function useReports() {
     }
   }
 
+  // Load clinical metrics from medical records
+  const loadClinicalMetrics = async (fromDate: string, toDate: string) => {
+    try {
+      // Get medical records
+      let recordsQuery = supabase
+        .from('medical_records')
+        .select(`
+          id, 
+          patient_id,
+          staff_id, 
+          record_date, 
+          diagnosis, 
+          treatment, 
+          prescription, 
+          follow_up_date, 
+          notes, 
+          attachments,
+          vital_signs,
+          patients(id, first_name, last_name, gender, date_of_birth)
+        `)
+        .gte('record_date', fromDate)
+        .lte('record_date', toDate)
+      
+      if (departmentFilter !== 'all') {
+        // Join through staff to filter by department
+        recordsQuery = recordsQuery
+          .eq('staff.department', departmentFilter)
+      }
+
+      const { data: records, error: recordsError } = await recordsQuery;
+      
+      if (recordsError) throw recordsError;
+
+      // Get patient data for demographics 
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('id, gender, date_of_birth');
+      
+      if (patientError) throw patientError;
+
+      // Process diagnosis frequency
+      const diagnosisCounts: {[key: string]: number} = {};
+      records?.forEach(record => {
+        const diagnosis = record.diagnosis;
+        // Group similar diagnoses into categories
+        let category = 'Other';
+        
+        if (diagnosis.toLowerCase().includes('heart') || diagnosis.toLowerCase().includes('cardio')) {
+          category = 'Cardiovascular';
+        } else if (diagnosis.toLowerCase().includes('lung') || diagnosis.toLowerCase().includes('respiratory')) {
+          category = 'Respiratory';
+        } else if (diagnosis.toLowerCase().includes('diabetes') || diagnosis.toLowerCase().includes('thyroid')) {
+          category = 'Endocrine';
+        } else if (diagnosis.toLowerCase().includes('cancer') || diagnosis.toLowerCase().includes('tumor')) {
+          category = 'Cancer';
+        } else if (diagnosis.toLowerCase().includes('fracture') || diagnosis.toLowerCase().includes('bone')) {
+          category = 'Musculoskeletal';
+        } else if (diagnosis.toLowerCase().includes('brain') || diagnosis.toLowerCase().includes('neuro')) {
+          category = 'Neurological';
+        } else if (diagnosis.toLowerCase().includes('child') || diagnosis.toLowerCase().includes('pediatric')) {
+          category = 'Pediatric';
+        }
+        
+        diagnosisCounts[category] = (diagnosisCounts[category] || 0) + 1;
+      });
+
+      const diagnosisFrequency = Object.entries(diagnosisCounts).map(([name, count]) => ({
+        name,
+        count
+      }));
+
+      // Process treatment outcomes
+      const treatmentResults: {[key: string]: {success: number, failure: number}} = {};
+      records?.forEach(record => {
+        const treatment = record.treatment;
+        // Simplify treatment categories
+        let category = 'Other Treatment';
+        if (treatment?.toLowerCase().includes('surgery')) {
+          category = 'Surgery';
+        } else if (treatment?.toLowerCase().includes('medication') || treatment?.toLowerCase().includes('drug')) {
+          category = 'Medication';
+        } else if (treatment?.toLowerCase().includes('therapy') || treatment?.toLowerCase().includes('rehabilitation')) {
+          category = 'Therapy';
+        } else if (treatment?.toLowerCase().includes('diet') || treatment?.toLowerCase().includes('exercise')) {
+          category = 'Lifestyle Changes';
+        }
+
+        // Check if there are notes about outcome
+        let isSuccess = true;
+        if (record.notes) {
+          const notesLower = record.notes.toLowerCase();
+          if (notesLower.includes('failed') || notesLower.includes('unsuccessful') || 
+              notesLower.includes('not improved') || notesLower.includes('deteriorated')) {
+            isSuccess = false;
+          }
+        }
+
+        if (!treatmentResults[category]) {
+          treatmentResults[category] = { success: 0, failure: 0 };
+        }
+        
+        if (isSuccess) {
+          treatmentResults[category].success += 1;
+        } else {
+          treatmentResults[category].failure += 1;
+        }
+      });
+
+      const treatmentOutcomes = Object.entries(treatmentResults).map(([treatment, results]) => ({
+        treatment,
+        success: results.success,
+        failure: results.failure
+      }));
+
+      // Generate patient outcomes over time (using months)
+      const monthsData: {[key: string]: {improved: number, stable: number, deteriorated: number}} = {};
+      
+      // Create entries for last 6 months
+      const sixMonthsAgo = subMonths(new Date(), 6);
+      const months = eachMonthOfInterval({
+        start: sixMonthsAgo,
+        end: new Date()
+      });
+
+      months.forEach(month => {
+        const monthStr = format(month, 'MMM yyyy');
+        monthsData[monthStr] = { improved: 0, stable: 0, deteriorated: 0 };
+      });
+
+      // Fill with actual data
+      records?.forEach(record => {
+        const recordMonth = format(new Date(record.record_date), 'MMM yyyy');
+        if (monthsData[recordMonth]) {
+          let outcome = 'stable';
+          if (record.notes) {
+            const notesLower = record.notes.toLowerCase();
+            if (notesLower.includes('improved') || notesLower.includes('better')) {
+              outcome = 'improved';
+            } else if (notesLower.includes('worse') || notesLower.includes('deteriorated')) {
+              outcome = 'deteriorated';
+            }
+          }
+          
+          monthsData[recordMonth][outcome as keyof typeof monthsData[typeof recordMonth]] += 1;
+        }
+      });
+
+      const patientOutcomes = Object.entries(monthsData).map(([month, outcomes]) => ({
+        month,
+        improved: outcomes.improved,
+        stable: outcomes.stable,
+        deteriorated: outcomes.deteriorated
+      }));
+
+      // Calculate readmission rates
+      const readmissionMonths: {[key: string]: {total: number, readmissions: number}} = {};
+      
+      // Initialize months
+      months.forEach(month => {
+        const monthStr = format(month, 'MMM yyyy');
+        readmissionMonths[monthStr] = { total: 0, readmissions: 0 };
+      });
+
+      // Get unique patients in each month and look for readmissions
+      const patientVisits: {[key: string]: {[key: string]: number}} = {};
+      
+      records?.forEach(record => {
+        const recordMonth = format(new Date(record.record_date), 'MMM yyyy');
+        const patientId = record.patient_id;
+        
+        if (!patientVisits[patientId]) {
+          patientVisits[patientId] = {};
+        }
+        
+        patientVisits[patientId][recordMonth] = (patientVisits[patientId][recordMonth] || 0) + 1;
+        
+        if (readmissionMonths[recordMonth]) {
+          readmissionMonths[recordMonth].total += 1;
+          
+          // If this patient has more than one visit in this month, count as readmission
+          if (patientVisits[patientId][recordMonth] > 1) {
+            readmissionMonths[recordMonth].readmissions += 1;
+          }
+        }
+      });
+
+      const readmissionRates = Object.entries(readmissionMonths).map(([month, data]) => ({
+        month,
+        rate: data.total > 0 ? (data.readmissions / data.total) * 100 : 0
+      }));
+
+      // Calculate overall readmission rate
+      const totalPatients = Object.keys(patientVisits).length;
+      const patientsWithMultipleVisits = Object.values(patientVisits).filter(visits => 
+        Object.values(visits).reduce((sum, count) => sum + count, 0) > 1
+      ).length;
+      
+      const overallReadmissionRate = totalPatients > 0 ? (patientsWithMultipleVisits / totalPatients) * 100 : 0;
+      
+      // Calculate length of stay (if we have discharge data)
+      const stayLengths: number[] = [];
+      records?.forEach(record => {
+        if (record.follow_up_date && record.record_date) {
+          const admissionDate = new Date(record.record_date);
+          const dischargeDate = new Date(record.follow_up_date);
+          const stayDays = Math.ceil((dischargeDate.getTime() - admissionDate.getTime()) / (1000 * 3600 * 24));
+          if (stayDays > 0 && stayDays < 100) { // Validate reasonable stay lengths
+            stayLengths.push(stayDays);
+          }
+        }
+      });
+      
+      const averageStayLength = stayLengths.length > 0 
+        ? stayLengths.reduce((sum, days) => sum + days, 0) / stayLengths.length 
+        : 0;
+      
+      // Get previous period for comparison
+      const prevFromDate = formatDate(subMonths(new Date(fromDate), 12), 'yyyy-MM-dd');
+      const prevToDate = formatDate(subMonths(new Date(toDate), 12), 'yyyy-MM-dd');
+      
+      const { data: prevRecords } = await supabase
+        .from('medical_records')
+        .select('id, patient_id, record_date, follow_up_date, notes')
+        .gte('record_date', prevFromDate)
+        .lte('record_date', prevToDate);
+      
+      // Calculate previous length of stay
+      const prevStayLengths: number[] = [];
+      prevRecords?.forEach(record => {
+        if (record.follow_up_date && record.record_date) {
+          const admissionDate = new Date(record.record_date);
+          const dischargeDate = new Date(record.follow_up_date);
+          const stayDays = Math.ceil((dischargeDate.getTime() - admissionDate.getTime()) / (1000 * 3600 * 24));
+          if (stayDays > 0 && stayDays < 100) {
+            prevStayLengths.push(stayDays);
+          }
+        }
+      });
+      
+      const prevAverageStayLength = prevStayLengths.length > 0 
+        ? prevStayLengths.reduce((sum, days) => sum + days, 0) / prevStayLengths.length 
+        : 1; // Avoid division by zero
+      
+      const lengthOfStayChange = ((averageStayLength - prevAverageStayLength) / prevAverageStayLength) * 100;
+
+      // Compile the clinical metrics
+      setClinicalMetrics({
+        diagnosisFrequency,
+        treatmentOutcomes,
+        patientOutcomes,
+        readmissionRates,
+        patientsByAge: clinicalMetrics.patientsByAge, // Preserve existing data
+        patientsByGender: clinicalMetrics.patientsByGender, // Preserve existing data
+        patientSatisfaction: {
+          rate: 85, // Placeholder - would come from patient survey data
+          change: 2.5
+        },
+        lengthOfStay: {
+          days: averageStayLength,
+          change: lengthOfStayChange
+        },
+        readmissionRate: {
+          rate: overallReadmissionRate,
+          change: -1.5 // Placeholder - would calculate from previous period
+        },
+        mortalityRate: {
+          rate: 0.8, // Placeholder - would calculate from actual mortality data
+          change: -0.3
+        }
+      });
+
+    } catch (error) {
+      console.error("Error loading clinical metrics:", error);
+      // Don't fail the whole loading process if clinical metrics fail
+    }
+  };
+
   // Refresh all data
   const refreshData = async () => {
     toast({
@@ -618,6 +978,7 @@ export function useReports() {
     revenueTrends,
     paymentDistribution,
     financialGrowth,
+    clinicalMetrics,
     
     // Actions
     setDateRange,

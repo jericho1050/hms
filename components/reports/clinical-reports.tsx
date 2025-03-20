@@ -100,17 +100,7 @@ export function ClinicalReports({
   const filteredDiagnoses = hasDiagnoses && clinicalMetrics && clinicalMetrics.diagnosisFrequency
     ? (departmentFilter === "all"
       ? clinicalMetrics.diagnosisFrequency
-      : clinicalMetrics.diagnosisFrequency.filter((diag) => {
-          const dept = departmentFilter.toLowerCase()
-          if (dept === "cardiology") return diag.name === "Cardiovascular"
-          if (dept === "neurology") return diag.name === "Neurological"
-          if (dept === "orthopedics") return diag.name === "Musculoskeletal"
-          if (dept === "pediatrics") return diag.name.includes("Pediatric")
-          if (dept === "oncology") return diag.name.includes("Cancer")
-          if (dept === "pulmonology") return diag.name === "Respiratory"
-          if (dept === "endocrinology") return diag.name === "Endocrine"
-          return false
-        }))
+      : clinicalMetrics.diagnosisFrequency.filter((diag) => diag.name.toLowerCase().includes(departmentFilter.toLowerCase())))
     : [];
 
   // Format age distribution data if available

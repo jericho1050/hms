@@ -26,10 +26,11 @@ import { OperationalReports } from "@/components/reports/operational-reports"
 import { ComplianceReports } from "@/components/reports/compliance-reports"
 import { ReportScheduler } from "@/components/reports/report-scheduler"
 import { cn } from "@/lib/utils"
-import { supabase } from "@/utils/supabase/client"
+import { useReports } from "@/hooks/use-reports"
 import { useToast } from "@/hooks/use-toast"
 import jsPDF from "jspdf"
 import { formatCurrency } from "@/lib/utils"
+import autoTable from "jspdf-autotable"
 
 // Define types for our data structures
 type RevenueDept = {
@@ -100,428 +101,247 @@ type DeptOccupancy = {
 
 export default function ReportsPage() {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(true)
-  const [departments, setDepartments] = useState<string[]>([])
-  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
-  })
-  const [departmentFilter, setDepartmentFilter] = useState<string>("all")
-  const [reportTypeFilter, setReportTypeFilter] = useState<string>("all")
-  const [activeTab, setActiveTab] = useState<string>("financial")
   const [isSchedulerOpen, setIsSchedulerOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
-
-  // Data states with proper typing
-  const [revenueByDept, setRevenueByDept] = useState<RevenueDept[]>([])
-  const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaim[]>([])
-  const [patientDemographics, setPatientDemographics] = useState<PatientDemographics>({
-    genderDistribution: [],
-    ageDistribution: []
-  })
-  const [appointmentStats, setAppointmentStats] = useState<AppointmentStats>({
-    totalAppointments: 0,
-    completedAppointments: 0,
-    noShowAppointments: 0,
-    pendingAppointments: 0,
-    completionRate: 0,
-    noShowRate: 0
-  })
-  const [bedOccupancy, setBedOccupancy] = useState<BedOccupancy[]>([])
-  const [financialSummary, setFinancialSummary] = useState<FinancialSummary>({
-    totalRevenue: 0,
-    outstandingBills: 0,
-    insuranceClaimsCount: 0,
-    collectionRate: 0
-  })
-
-  useEffect(() => {
-    loadData()
-  }, [dateRange, departmentFilter, reportTypeFilter])
-
-  const loadData = async () => {
-    setIsLoading(true)
-    try {
-      // Load departments for filtering
-      const { data: deptData, error: deptError } = await supabase
-        .from('departments')
-        .select('id, name')
-        .order('name')
-
-      if (deptError) throw deptError
-      setDepartments(deptData?.map(d => d.name) || [])
-
-      // Format dates for querying
-      const fromDate = dateRange.from ? formatDate(dateRange.from, 'yyyy-MM-dd') : formatDate(startOfMonth(new Date()), 'yyyy-MM-dd')
-      const toDate = dateRange.to ? formatDate(dateRange.to, 'yyyy-MM-dd') : formatDate(endOfMonth(new Date()), 'yyyy-MM-dd')
-
-      // Load financial data
-      await loadFinancialData(fromDate, toDate)
-
-      // Load patient demographics
-      await loadPatientDemographics()
-
-      // Load appointment statistics
-      await loadAppointmentStats(fromDate, toDate)
-
-      // Load bed occupancy
-      await loadBedOccupancy()
-
-    } catch (error) {
-      console.error("Error loading data:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load report data. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const loadFinancialData = async (fromDate: string, toDate: string) => {
-    try {
-      // Get total revenue
-      const { data: revenueData, error: revenueError } = await supabase
-        .from('billing')
-        .select('total_amount, payment_status, payment_date, invoice_date, insurance_claim_id')
-        .gte('invoice_date', fromDate)
-        .lte('invoice_date', toDate)
-
-      if (revenueError) throw revenueError
-
-      // Calculate financial metrics
-      const totalRevenue = revenueData?.reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0
-      const outstandingBills = revenueData?.filter(bill => bill.payment_status === 'pending')
-        .reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0
-      const insuranceClaimsCount = revenueData?.filter(bill => bill.insurance_claim_id !== null).length || 0
-      const paidAmount = revenueData?.filter(bill => bill.payment_status === 'paid')
-        .reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0
-      const collectionRate = totalRevenue > 0 ? (paidAmount / totalRevenue) * 100 : 0
-
-      setFinancialSummary({
-        totalRevenue,
-        outstandingBills,
-        insuranceClaimsCount,
-        collectionRate
-      })
-
-      // Get revenue by department (simplified approach)
-      const { data: staffData } = await supabase
-        .from('staff')
-        .select('id, department')
-
-      if (staffData) {
-        // Create a map of staff IDs to departments
-        const staffDeptMap: StaffDeptMap = {}
-        if (staffData) {
-          staffData.forEach(staff => {
-            staffDeptMap[staff.id] = staff.department
-          })
-        }
-
-        // Get appointments with billing
-        const { data: appointmentData } = await supabase
-          .from('appointments')
-          .select('staff_id')
-          .gte('appointment_date', fromDate)
-          .lte('appointment_date', toDate)
-
-        if (appointmentData) {
-          // Count appointments by department
-          const deptCounts: DeptCounts = {}
-          appointmentData.forEach(appt => {
-            const dept = staffDeptMap[appt.staff_id]
-            if (dept) {
-              deptCounts[dept] = (deptCounts[dept] || 0) + 1
-            }
-          })
-
-          // Convert to revenue by department (approximation)
-          const avgRevenue = totalRevenue / (appointmentData.length || 1)
-          const deptRevenue = Object.entries(deptCounts).map(([name, count]) => ({
-            name,
-            revenue: avgRevenue * count,
-            target: avgRevenue * count * 1.1 // 10% higher target
-          }))
-
-          setRevenueByDept(deptRevenue)
-        }
-      }
-
-      // Get insurance claims with patient info
-      if (revenueData) {
-        const claimsData = revenueData.filter(bill => bill.insurance_claim_id !== null).slice(0, 10)
-        
-        const claims = claimsData.map(claim => ({
-          id: claim.insurance_claim_id || `CL-${Math.floor(Math.random() * 10000)}`,
-          patient: "Patient Name", // We'll fetch this from patients table where possible
-          amount: claim.total_amount,
-          status: claim.payment_status,
-          provider: "Insurance Provider", // Placeholder
-          submittedDate: claim.invoice_date,
-          paidDate: claim.payment_date
-        }))
-
-        setInsuranceClaims(claims)
-      }
-    } catch (error) {
-      console.error("Error loading financial data:", error)
-    }
-  }
-
-  const loadPatientDemographics = async () => {
-    try {
-      // Get patient data for demographics
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('gender, date_of_birth')
-
-      if (patientError) throw patientError
-
-      // Process gender distribution
-      const genderCounts = { Male: 0, Female: 0, Other: 0 }
-      
-      // Process age distribution
-      const ageCounts = { 
-        '0-18': 0, 
-        '19-35': 0, 
-        '36-50': 0, 
-        '51-65': 0, 
-        '66+': 0 
-      }
-
-      if (patientData) {
-        patientData.forEach(patient => {
-          // Gender counts
-          if (patient.gender === 'male') genderCounts.Male++
-          else if (patient.gender === 'female') genderCounts.Female++
-          else genderCounts.Other++
-
-          // Age counts
-          if (patient.date_of_birth) {
-            const birthDate = new Date(patient.date_of_birth)
-            const age = new Date().getFullYear() - birthDate.getFullYear()
-            
-            if (age <= 18) ageCounts['0-18']++
-            else if (age <= 35) ageCounts['19-35']++
-            else if (age <= 50) ageCounts['36-50']++
-            else if (age <= 65) ageCounts['51-65']++
-            else ageCounts['66+']++
-          }
-        })
-      }
-
-      // Format for charts
-      const genderData = Object.entries(genderCounts).map(([gender, count]) => ({ gender, count }))
-      const ageData = Object.entries(ageCounts).map(([age, count]) => ({ age, count }))
-
-      setPatientDemographics({
-        genderDistribution: genderData,
-        ageDistribution: ageData
-      })
-    } catch (error) {
-      console.error("Error loading patient demographics:", error)
-    }
-  }
-
-  const loadAppointmentStats = async (fromDate: string, toDate: string) => {
-    try {
-      // Get appointment data
-      const { data: appointmentData, error: appointmentError } = await supabase
-        .from('appointments')
-        .select('status, appointment_date')
-        .gte('appointment_date', fromDate)
-        .lte('appointment_date', toDate)
-
-      if (appointmentError) throw appointmentError
-
-      if (appointmentData) {
-        const totalAppointments = appointmentData.length
-        const completedAppointments = appointmentData.filter(appt => appt.status === 'completed').length
-        const noShowAppointments = appointmentData.filter(appt => appt.status === 'no-show').length
-        const pendingAppointments = appointmentData.filter(appt => appt.status === 'scheduled').length
-        
-        const completionRate = totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0
-        const noShowRate = totalAppointments > 0 ? (noShowAppointments / totalAppointments) * 100 : 0
-
-        setAppointmentStats({
-          totalAppointments,
-          completedAppointments,
-          noShowAppointments,
-          pendingAppointments,
-          completionRate,
-          noShowRate
-        })
-      }
-    } catch (error) {
-      console.error("Error loading appointment stats:", error)
-    }
-  }
-
-  const loadBedOccupancy = async () => {
-    try {
-      // Get room and occupancy data
-      const { data: roomData, error: roomError } = await supabase
-        .from('rooms')
-        .select('room_number, capacity, current_occupancy, department_id, room_type')
-
-      if (roomError) throw roomError
-
-      if (roomData) {
-        // Get department info
-        const { data: deptData } = await supabase
-          .from('departments')
-          .select('id, name')
-
-        // Create department ID to name mapping
-        const deptMap: StaffDeptMap = {}
-        if (deptData) {
-          deptData.forEach(dept => {
-            deptMap[dept.id] = dept.name
-          })
-        }
-
-        // Format for bed occupancy chart
-        const bedOccupancyData = roomData.map(room => ({
-          room: room.room_number,
-          department: room.department_id ? (deptMap[room.department_id] ?? 'Unknown') : 'Unknown',
-          type: room.room_type,
-          capacity: room.capacity,
-          occupied: room.current_occupancy,
-          available: room.capacity - room.current_occupancy,
-          occupancyRate: room.capacity > 0 ? (room.current_occupancy / room.capacity) * 100 : 0
-        }))
-
-        // Group by department
-        const deptOccupancy: DeptOccupancy = {}
-        bedOccupancyData.forEach(room => {
-          if (!deptOccupancy[room.department]) {
-            deptOccupancy[room.department] = {
-              department: room.department,
-              total: 0,
-              occupied: 0,
-              available: 0
-            }
-          }
-          deptOccupancy[room.department].total += room.capacity
-          deptOccupancy[room.department].occupied += room.occupied
-          deptOccupancy[room.department].available += room.available
-        })
-
-        setBedOccupancy(Object.values(deptOccupancy))
-      }
-    } catch (error) {
-      console.error("Error loading bed occupancy:", error)
-    }
-  }
-
-  const refreshData = async () => {
-    toast({
-      title: "Refreshing",
-      description: "Updating report data...",
-    })
-    await loadData()
-    toast({
-      title: "Refreshed",
-      description: "Report data has been updated.",
-    })
-  }
+  const [activeTab, setActiveTab] = useState<string>("financial")
+  
+  // Use the useReports hook to get all report data and actions
+  const {
+    isLoading,
+    departments,
+    dateRange,
+    setDateRange,
+    departmentFilter,
+    setDepartmentFilter,
+    reportTypeFilter, 
+    setReportTypeFilter,
+    revenueByDept,
+    insuranceClaims,
+    patientDemographics,
+    appointmentStats,
+    bedOccupancy,
+    financialSummary,
+    revenueTrends,
+    paymentDistribution,
+    financialGrowth,
+    clinicalMetrics,
+    refreshData
+  } = useReports();
 
   const handleExportReport = (format: string) => {
+    setIsExportOpen(false)
+    toast({
+      title: "Generating Report",
+      description: `Preparing ${activeTab} report in ${format.toUpperCase()} format...`,
+    })
+
     try {
-      if (format === "pdf") {
+      if (format === 'pdf') {
+        // Generate PDF report
         const doc = new jsPDF()
         
-        // Add title
+        // Set title
         doc.setFontSize(20)
-        doc.text("Hospital Management System Report", 20, 20)
+        doc.text(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} Report`, 14, 20)
         
-        // Add date
+        // Add date range
         doc.setFontSize(12)
-        const today = new Date()
-        doc.text(`Report generated on: ${formatDate(today, 'MMMM dd, yyyy')}`, 20, 30)
+        doc.text(
+          `Date Range: ${dateRange.from ? formatDate(dateRange.from, 'PPP') : 'All time'} - ${dateRange.to ? formatDate(dateRange.to, 'PPP') : 'Present'}`, 
+          14, 
+          30
+        )
         
-        // Add financial summary
-        doc.setFontSize(16)
-        doc.text("Financial Summary", 20, 45)
-        doc.setFontSize(12)
-        doc.text(`Total Revenue: ${formatCurrency(financialSummary.totalRevenue)}`, 25, 55)
-        doc.text(`Outstanding Bills: ${formatCurrency(financialSummary.outstandingBills)}`, 25, 65)
-        doc.text(`Insurance Claims: ${financialSummary.insuranceClaimsCount}`, 25, 75)
-        doc.text(`Collection Rate: ${financialSummary.collectionRate.toFixed(2)}%`, 25, 85)
+        // Add department filter
+        doc.text(
+          `Department: ${departmentFilter === 'all' ? 'All Departments' : departmentFilter}`,
+          14,
+          40
+        )
         
-        // Add bed occupancy
-        if (bedOccupancy.length > 0) {
-          doc.setFontSize(16)
-          doc.text("Bed Occupancy", 20, 100)
-          doc.setFontSize(12)
+        // Add timestamp
+        doc.setFontSize(10)
+        doc.text(`Generated on ${formatDate(new Date(), 'PPP')}`, 14, 50)
+        
+        // Add appropriate content based on active tab
+        if (activeTab === 'financial') {
+          // Financial summary
+          doc.setFontSize(14)
+          doc.text("Financial Summary", 14, 70)
+          doc.setFontSize(11)
+          doc.text(`Total Revenue: ${formatCurrency(financialSummary.totalRevenue)}`, 20, 80)
+          doc.text(`Outstanding Bills: ${formatCurrency(financialSummary.outstandingBills)}`, 20, 90)
+          doc.text(`Insurance Claims: ${financialSummary.insuranceClaimsCount}`, 20, 100)
+          doc.text(`Collection Rate: ${financialSummary.collectionRate.toFixed(1)}%`, 20, 110)
           
-          let yPos = 110
-          bedOccupancy.forEach((dept: BedOccupancy) => {
-            const occupancyRate = dept.total > 0 ? ((dept.occupied/dept.total)*100).toFixed(1) : '0.0'
-            doc.text(`${dept.department}: ${dept.occupied}/${dept.total} (${occupancyRate}%)`, 25, yPos)
-            yPos += 10
-          })
+          // Revenue by department table
+          if (revenueByDept.length > 0) {
+            doc.setFontSize(14)
+            doc.text("Revenue by Department", 14, 130)
+            
+            let y = 140
+            revenueByDept.forEach((dept, i) => {
+              doc.setFontSize(11)
+              doc.text(`${dept.name}: ${formatCurrency(dept.revenue)}`, 20, y + (i * 10))
+            })
+          }
+        } else if (activeTab === 'clinical') {
+          // Clinical metrics
+          if (clinicalMetrics) {
+            doc.setFontSize(14)
+            doc.text("Clinical Overview", 14, 70)
+            
+            if (clinicalMetrics.patientSatisfaction) {
+              doc.setFontSize(11)
+              doc.text(`Patient Satisfaction: ${clinicalMetrics.patientSatisfaction.rate.toFixed(1)}%`, 20, 80)
+            }
+            
+            if (clinicalMetrics.lengthOfStay) {
+              doc.text(`Average Length of Stay: ${clinicalMetrics.lengthOfStay.days.toFixed(1)} days`, 20, 90)
+            }
+            
+            if (clinicalMetrics.readmissionRate) {
+              doc.text(`Readmission Rate: ${clinicalMetrics.readmissionRate.rate.toFixed(1)}%`, 20, 100)
+            }
+            
+            if (clinicalMetrics.mortalityRate) {
+              doc.text(`Mortality Rate: ${clinicalMetrics.mortalityRate.rate.toFixed(1)}%`, 20, 110)
+            }
+            
+            // Diagnosis frequency
+            if (clinicalMetrics.diagnosisFrequency && clinicalMetrics.diagnosisFrequency.length > 0) {
+              const sortedDiagnoses = [...clinicalMetrics.diagnosisFrequency].sort((a, b) => b.count - a.count).slice(0, 10);
+              
+              (doc as any).setFontSize(14)
+              (doc as any).text("Top Diagnoses", 14, 130)
+              
+              // Use autotable for better formatting
+              autoTable(doc, {
+                startY: 135,
+                head: [['Diagnosis', 'Count']],
+                body: sortedDiagnoses.map(diag => [diag.name, diag.count]),
+                theme: 'striped',
+                headStyles: { fillColor: [41, 128, 185] },
+                margin: { left: 14 },
+              });
+              
+              // Add treatment outcomes if available
+              if (clinicalMetrics.treatmentOutcomes && clinicalMetrics.treatmentOutcomes.length > 0) {
+                doc.addPage();
+                doc.setFontSize(14);
+                doc.text("Treatment Outcomes", 14, 20);
+                
+                autoTable(doc,{
+                  startY: 25,
+                  head: [['Treatment', 'Success Rate', 'Failure Rate']],
+                  body: clinicalMetrics.treatmentOutcomes.map(treatment => [
+                    treatment.treatment, 
+                    `${treatment.success}%`, 
+                    `${treatment.failure}%`
+                  ]),
+                  theme: 'striped',
+                  headStyles: { fillColor: [41, 128, 185] },
+                  margin: { left: 14 },
+                });
+              }
+              
+              // Add readmission rates if available
+              if (clinicalMetrics.readmissionRates && clinicalMetrics.readmissionRates.length > 0) {
+                const currentY = (doc as any).lastAutoTable?.finalY || 160;
+                
+                if (currentY > 220) {
+                  doc.addPage();
+                  doc.setFontSize(14);
+                  doc.text("Readmission Rates", 14, 20);
+                  
+                  autoTable(doc,{
+                    startY: 25,
+                    head: [['Month', 'Rate (%)']],
+                    body: clinicalMetrics.readmissionRates.map(item => [
+                      item.month,
+                      item.rate.toFixed(1)
+                    ]),
+                    theme: 'striped',
+                    headStyles: { fillColor: [41, 128, 185] },
+                    margin: { left: 14 },
+                  });
+                } else {
+                  doc.setFontSize(14);
+                  doc.text("Readmission Rates", 14, currentY + 10);
+                  
+                  autoTable(doc,{
+                    startY: currentY + 15,
+                    head: [['Month', 'Rate (%)']],
+                    body: clinicalMetrics.readmissionRates.map(item => [
+                      item.month,
+                      item.rate.toFixed(1)
+                    ]),
+                    theme: 'striped',
+                    headStyles: { fillColor: [41, 128, 185] },
+                    margin: { left: 14 },
+                  });
+                }
+              }
+            }
+          }
+        } else if (activeTab === 'operational') {
+          // Operational metrics
+          doc.setFontSize(14)
+          doc.text("Operational Summary", 14, 70)
+          doc.setFontSize(11)
+          
+          if (appointmentStats) {
+            doc.text(`Total Appointments: ${appointmentStats.totalAppointments}`, 20, 80)
+            doc.text(`Completion Rate: ${appointmentStats.completionRate.toFixed(1)}%`, 20, 90)
+            doc.text(`No-Show Rate: ${appointmentStats.noShowRate.toFixed(1)}%`, 20, 100)
+          }
+          
+          // Bed occupancy
+          if (bedOccupancy.length > 0) {
+            doc.setFontSize(14)
+            doc.text("Bed Occupancy by Department", 14, 120)
+            
+            let y = 130
+            bedOccupancy.forEach((dept, i) => {
+              const occupancyRate = dept.total > 0 ? ((dept.occupied / dept.total) * 100).toFixed(1) : "0.0"
+              doc.setFontSize(11)
+              doc.text(`${dept.department}: ${occupancyRate}% (${dept.occupied}/${dept.total})`, 20, y + (i * 10))
+            })
+          }
+        } else if (activeTab === 'compliance') {
+          // Placeholder for compliance data
+          doc.setFontSize(14)
+          doc.text("Compliance Summary", 14, 70)
+          doc.setFontSize(11)
+          doc.text("Compliance Rate: 95.3%", 20, 80)
+          doc.text("Incidents: 12", 20, 90)
+          doc.text("Open Investigations: 3", 20, 100)
+          doc.text("Resolved Issues: 9", 20, 110)
         }
         
         // Save the PDF
-        doc.save(`hospital-report-${formatDate(today, 'yyyy-MM-dd')}.pdf`)
-      } else if (format === "csv") {
-        // Create CSV content
-        let csvContent = "data:text/csv;charset=utf-8,"
+        doc.save(`${activeTab}-report-${formatDate(new Date(), 'yyyy-MM-dd')}.pdf`)
         
-        // Add financial data
-        csvContent += "Financial Summary\n"
-        csvContent += "Metric,Value\n"
-        csvContent += `Total Revenue,${financialSummary.totalRevenue}\n`
-        csvContent += `Outstanding Bills,${financialSummary.outstandingBills}\n`
-        csvContent += `Insurance Claims,${financialSummary.insuranceClaimsCount}\n`
-        csvContent += `Collection Rate,${financialSummary.collectionRate.toFixed(2)}%\n\n`
-        
-        // Add revenue by department
-        if (revenueByDept.length > 0) {
-          csvContent += "Revenue by Department\n"
-          csvContent += "Department,Revenue,Target\n"
-          revenueByDept.forEach(dept => {
-            csvContent += `${dept.name},${dept.revenue},${dept.target}\n`
-          })
-          csvContent += "\n"
-        }
-        
-        // Add bed occupancy
-        if (bedOccupancy.length > 0) {
-          csvContent += "Bed Occupancy\n"
-          csvContent += "Department,Total,Occupied,Available\n"
-          bedOccupancy.forEach((dept: BedOccupancy) => {
-            csvContent += `${dept.department},${dept.total},${dept.occupied},${dept.available}\n`
-          })
-        }
-        
-        // Create download link
-        const encodedUri = encodeURI(csvContent)
-        const link = document.createElement("a")
-        link.setAttribute("href", encodedUri)
-        link.setAttribute("download", `hospital-report-${formatDate(new Date(), 'yyyy-MM-dd')}.csv`)
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+        toast({
+          title: "Report Generated",
+          description: `Your ${activeTab} report has been downloaded as a PDF file.`,
+        })
+      } else {
+        // Handle other formats (CSV, Excel, etc.)
+        toast({
+          title: "Format Not Supported",
+          description: `${format.toUpperCase()} format is not currently supported. Please use PDF.`,
+          variant: "destructive",
+        })
       }
-      
-      toast({
-        title: "Export successful",
-        description: `Report exported in ${format.toUpperCase()} format.`,
-      })
     } catch (error) {
-      console.error("Error exporting report:", error)
+      console.error("Error generating report:", error)
       toast({
-        title: "Export failed",
-        description: "There was an error exporting the report.",
+        title: "Error",
+        description: "Failed to generate report. Please try again.",
         variant: "destructive",
       })
     }
-    
-    setIsExportOpen(false)
   }
 
   if (isLoading && departments.length === 0) {
@@ -708,26 +528,9 @@ export default function ReportsPage() {
               insuranceClaimsGrowth: -5.4, // Placeholder
               collectionRateGrowth: 2.1, // Placeholder
               revenueByDepartment: revenueByDept,
-              revenueTrends: [
-                { month: "Jan", revenue: 280000, expenses: 240000 },
-                { month: "Feb", revenue: 300000, expenses: 238000 },
-                { month: "Mar", revenue: 358000, expenses: 245000 },
-                { month: "Apr", revenue: 320000, expenses: 230000 },
-                { month: "May", revenue: 410000, expenses: 250000 },
-                { month: "Jun", revenue: 380000, expenses: 260000 },
-                { month: "Jul", revenue: 390000, expenses: 270000 },
-                { month: "Aug", revenue: 405000, expenses: 265000 },
-                { month: "Sep", revenue: 430000, expenses: 275000 },
-                { month: "Oct", revenue: 440000, expenses: 280000 },
-                { month: "Nov", revenue: 450000, expenses: 290000 },
-                { month: "Dec", revenue: 480000, expenses: 300000 },
-              ],
-              paymentDistribution: [
-                { name: "Insurance", value: 68 },
-                { name: "Out-of-pocket", value: 22 },
-                { name: "Government", value: 8 },
-                { name: "Other", value: 2 },
-              ]
+              revenueTrends: revenueTrends,
+              paymentDistribution: paymentDistribution,
+              // financialGrowth is not defined in FinancialMetrics type
             }}
             insuranceClaims={insuranceClaims}
           />
@@ -738,27 +541,7 @@ export default function ReportsPage() {
             dateRange={dateRange}
             departmentFilter={departmentFilter}
             reportTypeFilter={reportTypeFilter}
-            clinicalMetrics={{
-              patientsByAge: patientDemographics.ageDistribution || [],
-              patientsByGender: patientDemographics.genderDistribution || [],
-              diagnosisFrequency: [
-                { name: "Cardiovascular", count: 324 },
-                { name: "Respiratory", count: 256 },
-                { name: "Neurological", count: 187 },
-                { name: "Digestive", count: 142 },
-                { name: "Musculoskeletal", count: 198 },
-                { name: "Endocrine", count: 113 },
-                { name: "Infectious", count: 167 },
-                { name: "Other", count: 98 },
-              ],
-              treatmentOutcomes: [
-                { treatment: "Medication", success: 85, failure: 15 },
-                { treatment: "Surgery", success: 78, failure: 22 },
-                { treatment: "Therapy", success: 92, failure: 8 },
-                { treatment: "Radiation", success: 65, failure: 35 },
-                { treatment: "Alternative", success: 72, failure: 28 },
-              ]
-            }}
+            clinicalMetrics={clinicalMetrics}
           />
         </TabsContent>
 
