@@ -62,6 +62,14 @@ interface FinancialReportsProps {
   }>
 }
 
+// Add a helper function to format growth percentages
+const formatGrowthPercentage = (value: number) => {
+  if (Math.abs(value) > 1000) {
+    return `${value > 0 ? '>' : '<'}1000`;
+  }
+  return value.toFixed(1);
+};
+
 export function FinancialReports({ 
   dateRange, 
   departmentFilter, 
@@ -140,7 +148,8 @@ export function FinancialReports({
                 ) : (
                   <TrendingDown className="h-3 w-3 mr-1" />
                 )}
-                {financialMetrics.revenueGrowth >= 0 ? '+' : ''}{financialMetrics.revenueGrowth.toFixed(1)}%
+                {financialMetrics.revenueGrowth >= 0 ? '+' : ''}
+                {formatGrowthPercentage(financialMetrics.revenueGrowth)}%
               </span>{" "}
               vs. previous year
             </p>
@@ -160,7 +169,8 @@ export function FinancialReports({
                 ) : (
                   <TrendingDown className="h-3 w-3 mr-1" />
                 )}
-                {financialMetrics.outstandingBillsGrowth > 0 ? '+' : ''}{financialMetrics.outstandingBillsGrowth.toFixed(1)}%
+                {financialMetrics.outstandingBillsGrowth > 0 ? '+' : ''}
+                {formatGrowthPercentage(financialMetrics.outstandingBillsGrowth)}%
               </span>{" "}
               vs. previous month
             </p>
@@ -180,7 +190,7 @@ export function FinancialReports({
                 ) : (
                   <TrendingUp className="h-3 w-3 mr-1" />
                 )}
-                {financialMetrics.insuranceClaimsGrowth.toFixed(1)}%
+                {formatGrowthPercentage(financialMetrics.insuranceClaimsGrowth)}%
               </span>{" "}
               pending claims
             </p>
@@ -200,7 +210,8 @@ export function FinancialReports({
                 ) : (
                   <TrendingDown className="h-3 w-3 mr-1" />
                 )}
-                {financialMetrics.collectionRateGrowth >= 0 ? '+' : ''}{financialMetrics.collectionRateGrowth.toFixed(1)}%
+                {financialMetrics.collectionRateGrowth >= 0 ? '+' : ''}
+                {formatGrowthPercentage(financialMetrics.collectionRateGrowth)}%
               </span>{" "}
               vs. target
             </p>

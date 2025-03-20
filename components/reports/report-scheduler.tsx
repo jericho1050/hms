@@ -20,6 +20,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
+import { AlertTriangle } from "lucide-react"
 
 const formSchema = z.object({
   reportName: z.string().min(2, "Report name must be at least 2 characters"),
@@ -144,6 +145,24 @@ export function ReportScheduler({
           <DialogTitle>Schedule Regular Report</DialogTitle>
           <DialogDescription>Set up automated report generation and delivery on a regular schedule</DialogDescription>
         </DialogHeader>
+
+        {/* Beta notification banner */}
+        <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 rounded-md mb-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm font-medium">
+                Beta Feature
+              </p>
+              <p className="text-sm mt-1">
+                The report scheduler is still under development and may not be fully stable.
+                Some scheduling features might be incomplete or not work as expected.
+              </p>
+            </div>
+          </div>
+        </div>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">

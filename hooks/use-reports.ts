@@ -1,172 +1,11 @@
+import { ClinicalMetrics, DemographicData, AgeData, AppointmentStats, BedOccupancy, DeptCounts, FinancialGrowth, FinancialSummary, InsuranceClaim, PatientDemographics, PaymentDistribution, RevenueDept, RevenueTrend, StaffDeptMap, RoomOccupancyHistory, OperationalMetrics } from './../types/reports';
 import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, formatDate, subMonths, subYears, eachMonthOfInterval } from "date-fns";
+import { format, startOfMonth, endOfMonth, formatDate, subMonths, subYears, eachMonthOfInterval, addDays, subDays } from "date-fns";
 import { supabase } from "@/utils/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { DeptOccupancy } from "@/types/reports";
 
 
-type RevenueDept = {
-  name: string;
-  revenue: number;
-  target: number;
-}
-
-type InsuranceClaim = {
-  id: string;
-  patient: string;
-  amount: number;
-  status: string;
-  provider: string;
-  submittedDate: string;
-  paidDate: string | null;
-}
-
-type DemographicData = {
-  gender: string;
-  count: number;
-}
-
-type AgeData = {
-  age: string;
-  count: number;
-}
-
-type PatientDemographics = {
-  genderDistribution: DemographicData[];
-  ageDistribution: AgeData[];
-}
-
-type AppointmentStats = {
-  totalAppointments: number;
-  completedAppointments: number;
-  noShowAppointments: number;
-  pendingAppointments: number;
-  completionRate: number;
-  noShowRate: number;
-}
-
-type BedOccupancy = {
-  department: string;
-  total: number;
-  occupied: number;
-  available: number;
-}
-
-type FinancialSummary = {
-  totalRevenue: number;
-  outstandingBills: number;
-  insuranceClaimsCount: number;
-  collectionRate: number;
-}
-
-type FinancialGrowth = {
-  revenueGrowth: number;
-  outstandingBillsGrowth: number;
-  insuranceClaimsGrowth: number;
-  collectionRateGrowth: number;
-}
-
-type RevenueTrend = {
-  month: string;
-  revenue: number;
-  expenses: number;
-}
-
-type PaymentDistribution = {
-  name: string;
-  value: number;
-}
-
-type StaffDeptMap = {
-  [key: string]: string;
-}
-
-type DeptCounts = {
-  [key: string]: number;
-}
-
-type FilterState = {
-  dateRange: { from: Date | undefined; to: Date | undefined };
-  departmentFilter: string;
-  reportTypeFilter: string;
-}
-
-// Add interfaces for clinical metrics and medical records
-type MedicalRecord = {
-  id: string;
-  patient_id: string;
-  staff_id: string;
-  record_date: string;
-  diagnosis: string;
-  treatment: string;
-  prescription: any;
-  follow_up_date: string | null;
-  notes: string | null;
-  attachments: string[] | null;
-  vital_signs: any;
-}
-
-type DiagnosisCount = {
-  name: string;
-  count: number;
-}
-
-type TreatmentOutcome = {
-  treatment: string;
-  success: number;
-  failure: number;
-}
-
-type PatientOutcome = {
-  month: string;
-  improved: number;
-  stable: number;
-  deteriorated: number;
-}
-
-type ReadmissionRate = {
-  month: string;
-  rate: number;
-}
-
-type CommonProcedure = {
-  procedure: string;
-  count: number;
-  avgTime: number;
-  complicationRate: number;
-}
-
-type ClinicalMetrics = {
-  patientsByAge?: Array<{
-    age: string;
-    count: number;
-  }>;
-  patientsByGender?: Array<{
-    gender: string;
-    count: number;
-  }>;
-  diagnosisFrequency?: DiagnosisCount[];
-  treatmentOutcomes?: TreatmentOutcome[];
-  patientOutcomes?: PatientOutcome[];
-  readmissionRates?: ReadmissionRate[];
-  commonProcedures?: CommonProcedure[];
-  patientSatisfaction?: {
-    rate: number;
-    change: number;
-  };
-  lengthOfStay?: {
-    days: number;
-    change: number;
-  };
-  readmissionRate?: {
-    rate: number;
-    change: number;
-  };
-  mortalityRate?: {
-    rate: number;
-    change: number;
-  };
-}
 
 export function useReports() {
   const { toast } = useToast();
@@ -184,10 +23,7 @@ export function useReports() {
   // Data states
   const [revenueByDept, setRevenueByDept] = useState<RevenueDept[]>([]);
   const [insuranceClaims, setInsuranceClaims] = useState<InsuranceClaim[]>([]);
-  const [patientDemographics, setPatientDemographics] = useState<PatientDemographics>({
-    genderDistribution: [],
-    ageDistribution: []
-  });
+
   const [appointmentStats, setAppointmentStats] = useState<AppointmentStats>({
     totalAppointments: 0,
     completedAppointments: 0,
@@ -214,6 +50,12 @@ export function useReports() {
 
   // Add clinical metrics state
   const [clinicalMetrics, setClinicalMetrics] = useState<ClinicalMetrics>({});
+  
+  // Add operational metrics state
+  const [operationalMetrics, setOperationalMetrics] = useState<OperationalMetrics>({});
+  
+  // Add room occupancy history state
+  const [roomOccupancyHistory, setRoomOccupancyHistory] = useState<RoomOccupancyHistory[]>([]);
 
   // Load data when filters change
   useEffect(() => {
@@ -240,7 +82,7 @@ export function useReports() {
       await loadFinancialData(fromDate, toDate)
 
       // Load patient demographics
-      await loadPatientDemographics()
+      const patientDemographics = await loadPatientDemographics()
 
       // Load appointment statistics
       await loadAppointmentStats(fromDate, toDate)
@@ -249,7 +91,10 @@ export function useReports() {
       await loadBedOccupancy()
 
       // Load clinical metrics from medical records
-      await loadClinicalMetrics(fromDate, toDate)
+      await loadClinicalMetrics(fromDate, toDate, patientDemographics);
+      
+      // Load operational metrics including room occupancy history
+      await loadOperationalMetrics(fromDate, toDate);
 
     } catch (error) {
       console.error("Error loading data:", error)
@@ -306,11 +151,73 @@ export function useReports() {
         .reduce((sum, bill) => sum + (bill.total_amount || 0), 0) || 0
       const prevCollectionRate = prevTotalRevenue > 0 ? (prevPaidAmount / prevTotalRevenue) * 100 : 1
 
-      // Calculate growth rates
-      const revenueGrowth = ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100
-      const outstandingBillsGrowth = ((outstandingBills - prevOutstandingBills) / prevOutstandingBills) * 100
-      const insuranceClaimsGrowth = ((insuranceClaimsCount - prevInsuranceClaimsCount) / prevInsuranceClaimsCount) * 100
-      const collectionRateGrowth = collectionRate - prevCollectionRate
+      // Calculate growth rates with reasonable fallbacks
+      let revenueGrowth = prevTotalRevenue > 100 
+        ? ((totalRevenue - prevTotalRevenue) / prevTotalRevenue) * 100 
+        : (totalRevenue > prevTotalRevenue ? 100 : 0);
+      
+      let outstandingBillsGrowth = prevOutstandingBills > 100 
+        ? ((outstandingBills - prevOutstandingBills) / prevOutstandingBills) * 100 
+        : (outstandingBills > prevOutstandingBills ? 100 : -100);
+      
+      let insuranceClaimsGrowth = prevInsuranceClaimsCount > 5 
+        ? ((insuranceClaimsCount - prevInsuranceClaimsCount) / prevInsuranceClaimsCount) * 100 
+        : (insuranceClaimsCount > prevInsuranceClaimsCount ? 100 : 0);
+      
+      // For collection rate, use percentage point difference rather than percentage growth
+      let collectionRateGrowth = collectionRate - prevCollectionRate;
+
+      // NOTE: Historical metrics functionality commented out until database types are updated
+      /* 
+      // Try to get historical data for more accurate comparisons
+      try {
+        const previousMonth = format(subMonths(new Date(), 1), 'yyyy-MM');
+        const { data: historicalData } = await supabase
+          .from('financial_historical_metrics')
+          .select('metric_name, metric_value')
+          .eq('period', previousMonth)
+          .in('metric_name', ['revenue', 'outstanding_bills', 'insurance_claims', 'collection_rate']);
+        
+        // Use historical data if available
+        if (historicalData && historicalData.length > 0) {
+          console.log('Using historical metrics data for growth calculation');
+          
+          const prevHistoricalRevenue = historicalData.find(d => d.metric_name === 'revenue')?.metric_value;
+          const prevHistoricalOutstanding = historicalData.find(d => d.metric_name === 'outstanding_bills')?.metric_value;
+          const prevHistoricalClaims = historicalData.find(d => d.metric_name === 'insurance_claims')?.metric_value;
+          const prevHistoricalCollection = historicalData.find(d => d.metric_name === 'collection_rate')?.metric_value;
+          
+          // Recalculate with historical data if available
+          if (prevHistoricalRevenue && prevHistoricalRevenue > 100) {
+            revenueGrowth = ((totalRevenue - prevHistoricalRevenue) / prevHistoricalRevenue) * 100;
+          }
+          
+          if (prevHistoricalOutstanding && prevHistoricalOutstanding > 100) {
+            outstandingBillsGrowth = ((outstandingBills - prevHistoricalOutstanding) / prevHistoricalOutstanding) * 100;
+          }
+          
+          if (prevHistoricalClaims && prevHistoricalClaims > 5) {
+            insuranceClaimsGrowth = ((insuranceClaimsCount - prevHistoricalClaims) / prevHistoricalClaims) * 100;
+          }
+          
+          if (prevHistoricalCollection) {
+            collectionRateGrowth = collectionRate - prevHistoricalCollection;
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching historical metrics:", error);
+        // Continue with previously calculated values
+      }
+      */
+
+      // Cap extreme values for better display
+      revenueGrowth = Math.max(-999, Math.min(999, revenueGrowth));
+      outstandingBillsGrowth = Math.max(-999, Math.min(999, outstandingBillsGrowth));
+      insuranceClaimsGrowth = Math.max(-999, Math.min(999, insuranceClaimsGrowth));
+      collectionRateGrowth = Math.max(-100, Math.min(100, collectionRateGrowth));
+
+      // Store current metrics in historical table for future comparison
+      // await storeCurrentMetrics(totalRevenue, outstandingBills, insuranceClaimsCount, collectionRate);
 
       setFinancialSummary({
         totalRevenue,
@@ -564,13 +471,18 @@ export function useReports() {
       // Format for charts
       const genderData = Object.entries(genderCounts).map(([gender, count]) => ({ gender, count }))
       const ageData = Object.entries(ageCounts).map(([age, count]) => ({ age, count }))
-
-      setPatientDemographics({
+      
+      return {
         genderDistribution: genderData,
         ageDistribution: ageData
-      })
-    } catch (error) {
+      }
+   } catch (error) {
       console.error("Error loading patient demographics:", error)
+      // Return empty arrays if there's an error
+      return {
+        genderDistribution: [],
+        ageDistribution: []
+      }
     }
   }
 
@@ -665,7 +577,7 @@ export function useReports() {
   }
 
   // Load clinical metrics from medical records
-  const loadClinicalMetrics = async (fromDate: string, toDate: string) => {
+  const loadClinicalMetrics = async (fromDate: string, toDate: string, patientDemographics: PatientDemographics) => {
     try {
       // Get medical records
       let recordsQuery = supabase
@@ -915,11 +827,11 @@ export function useReports() {
         treatmentOutcomes,
         patientOutcomes,
         readmissionRates,
-        patientsByAge: clinicalMetrics.patientsByAge, // Preserve existing data
-        patientsByGender: clinicalMetrics.patientsByGender, // Preserve existing data
+        patientsByAge: patientDemographics?.ageDistribution || [],// Preserve existing data
+        patientsByGender: patientDemographics?.genderDistribution || [], // Preserve existing data
         patientSatisfaction: {
-          rate: 85, // Placeholder - would come from patient survey data
-          change: 2.5
+          rate: 0, // Zero instead of hardcoded placeholder
+          change: 0  // Zero instead of hardcoded placeholder
         },
         lengthOfStay: {
           days: averageStayLength,
@@ -927,11 +839,11 @@ export function useReports() {
         },
         readmissionRate: {
           rate: overallReadmissionRate,
-          change: -1.5 // Placeholder - would calculate from previous period
+          change: 0  // Zero instead of hardcoded placeholder
         },
         mortalityRate: {
-          rate: 0.8, // Placeholder - would calculate from actual mortality data
-          change: -0.3
+          rate: 0,  // Zero instead of hardcoded placeholder
+          change: 0  // Zero instead of hardcoded placeholder
         }
       });
 
@@ -940,6 +852,55 @@ export function useReports() {
       // Don't fail the whole loading process if clinical metrics fail
     }
   };
+
+  // Function to store current metrics in historical table
+  /* 
+  const storeCurrentMetrics = async (revenue: number, outstandingBills: number, 
+                                    insuranceClaims: number, collectionRate: number) => {
+    try {
+      const currentPeriod = format(new Date(), 'yyyy-MM');
+      
+      // Store each metric as a separate record
+      const metrics = [
+        { period: currentPeriod, metric_name: 'revenue', metric_value: revenue },
+        { period: currentPeriod, metric_name: 'outstanding_bills', metric_value: outstandingBills },
+        { period: currentPeriod, metric_name: 'insurance_claims', metric_value: insuranceClaims },
+        { period: currentPeriod, metric_name: 'collection_rate', metric_value: collectionRate }
+      ];
+      
+      // Check if metrics already exist for this period
+      const { data: existingMetrics } = await supabase
+        .from('financial_historical_metrics')
+        .select('id, metric_name')
+        .eq('period', currentPeriod);
+      
+      if (existingMetrics && existingMetrics.length > 0) {
+        // Update existing metrics
+        for (const metric of metrics) {
+          const existingMetric = existingMetrics.find(m => m.metric_name === metric.metric_name);
+          if (existingMetric) {
+            await supabase
+              .from('financial_historical_metrics')
+              .update({ metric_value: metric.metric_value })
+              .eq('id', existingMetric.id);
+          } else {
+            await supabase
+              .from('financial_historical_metrics')
+              .insert(metric);
+          }
+        }
+      } else {
+        // Insert new metrics
+        await supabase
+          .from('financial_historical_metrics')
+          .insert(metrics);
+      }
+    } catch (error) {
+      console.error("Error storing historical metrics:", error);
+      // Don't stop execution if history storage fails
+    }
+  };
+  */
 
   // Refresh all data
   const refreshData = async () => {
@@ -954,11 +915,173 @@ export function useReports() {
     })
   }
 
-  // Export functionality
-  const exportReport = async (format: string) => {
-    // This is left to be implemented in the page component as it requires UI libraries like jsPDF
-    return { format, success: true };
-  };
+  // // Export functionality
+  // const exportReport = async (format: string) => {
+  //   // This is left to be implemented in the page component as it requires UI libraries like jsPDF
+  //   return { format, success: true };
+  // };
+
+  // Function to calculate average wait time from appointments if possible
+const calculateAverageWaitTime = () => {
+  // If you don't have appointment duration or wait time data in your schema
+  // Return null to indicate it's not available
+  return null;
+};
+
+// Function to check if staff utilization can be calculated
+const isStaffUtilizationAvailable = false; // Set to true if you add this data to your schema
+
+// Function to fetch staff utilization from Supabase
+const fetchStaffUtilization = async () => {
+  try {
+    // This would be implemented if you had the appropriate table
+    return null;
+  } catch (error) {
+    console.error("Error fetching staff utilization:", error);
+    return null;
+  }
+};
+
+// Function to load operational metrics including room occupancy history
+const loadOperationalMetrics = async (fromDate: string, toDate: string) => {
+  try {
+    // Load room occupancy history
+    await loadRoomOccupancyHistory(fromDate, toDate);
+    
+    // Calculate operational metrics
+    const appointmentCompletionRate = appointmentStats.completionRate;
+    const noShowRate = appointmentStats.noShowRate;
+    
+    // Calculate bed occupancy rate (average across departments)
+    const bedOccupancyRate = bedOccupancy.length > 0 
+      ? bedOccupancy.reduce((sum, dept) => sum + (dept.occupied / dept.total) * 100, 0) / bedOccupancy.length
+      : 0;
+    
+    // Convert room occupancy history to operational metrics format
+    const roomUtilization = roomOccupancyHistory.map(room => ({
+      room: `${room.room_number || 'Unknown'} (${room.department_name || 'Unassigned'})`,
+      utilizationRate: room.occupancy_rate ?? 0,
+    }));
+    
+    // Calculate staff utilization (placeholder until we have real data)
+    const staffUtilization = departments.map(dept => ({
+      department: dept,
+      utilizationRate: Math.random() * 30 + 60, // Random value between 60-90% for demo
+    }));
+    
+    // Set operational metrics
+    setOperationalMetrics({
+      appointmentCompletionRate,
+      noShowRate,
+      averageWaitTime: 0, // Zero instead of hardcoded placeholder
+      bedOccupancyRate,
+      roomUtilization: roomUtilization.map(item => ({
+        room: item.room,
+        utilizationRate: Number(item.utilizationRate)
+      })),
+      staffUtilization,
+      bedOccupancy,
+      staffUtilizationRate: 0, // Zero instead of hardcoded placeholder
+      staffUtilizationChange: 0, // Zero instead of hardcoded placeholder
+      dailyAdmissions: await generateDailyAdmissionsData(fromDate, toDate),
+      roomOccupancyHistory, // Add the room occupancy history data
+    });
+    
+  } catch (error) {
+    console.error("Error loading operational metrics:", error);
+  }
+};
+
+// Function to load room occupancy history
+const loadRoomOccupancyHistory = async (fromDate: string, toDate: string) => {
+  try {
+    let query = supabase
+      .from('room_occupancy_history')
+      .select('*')
+      .gte('date', fromDate)
+      .lte('date', toDate)
+      .order('date', { ascending: false });
+      
+    // Apply department filter if not "all"
+    if (departmentFilter !== 'all') {
+      const { data: deptData } = await supabase
+        .from('departments')
+        .select('id')
+        .eq('name', departmentFilter)
+        .single();
+        
+      if (deptData?.id) {
+        query = query.eq('department_id', deptData.id);
+      }
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      throw error;
+    }
+    
+    setRoomOccupancyHistory(data || []);
+    
+  } catch (error) {
+    console.error("Error loading room occupancy history:", error);
+    setRoomOccupancyHistory([]);
+  }
+};
+
+// Helper function to generate mock daily admissions data
+const generateDailyAdmissionsData = async (fromDate: string, toDate: string) => {
+  try {
+    // Check if we can get real data from patient_room_assignments
+    const { data: admissionsData } = await supabase
+      .from('patient_room_assignments')
+      .select('admission_date')
+      .gte('admission_date', fromDate)
+      .lte('admission_date', toDate);
+      
+    if (admissionsData && admissionsData.length > 0) {
+      // Process real data by day
+      const admissionsByDay: {[key: string]: {emergency: number, scheduled: number}} = {};
+      
+      // Initialize days in range
+      let currentDate = new Date(fromDate);
+      const endDate = new Date(toDate);
+      
+      while (currentDate <= endDate) {
+        const dayKey = format(currentDate, 'yyyy-MM-dd');
+        admissionsByDay[dayKey] = { emergency: 0, scheduled: 0 };
+        currentDate = addDays(currentDate, 1);
+      }
+      
+      // Count admissions by day
+      admissionsData.forEach(admission => {
+        const admissionDay = format(new Date(admission.admission_date), 'yyyy-MM-dd');
+        if (admissionsByDay[admissionDay]) {
+          // Randomly assign as emergency or scheduled for demo
+          if (Math.random() > 0.7) {
+            admissionsByDay[admissionDay].emergency += 1;
+          } else {
+            admissionsByDay[admissionDay].scheduled += 1;
+          }
+        }
+      });
+      
+      // Convert to array format for charts
+      return Object.entries(admissionsByDay).map(([day, counts]) => ({
+        day: format(new Date(day), 'MMM dd'),
+        emergency: counts.emergency,
+        scheduled: counts.scheduled
+      }));
+    }
+    
+    // If no real data, return empty array
+    return [];
+    
+  } catch (error) {
+    console.error("Error generating daily admissions data:", error);
+    return [];
+  }
+};
 
   return {
     // State
@@ -971,7 +1094,6 @@ export function useReports() {
     // Data
     revenueByDept,
     insuranceClaims,
-    patientDemographics,
     appointmentStats,
     bedOccupancy,
     financialSummary,
@@ -979,13 +1101,16 @@ export function useReports() {
     paymentDistribution,
     financialGrowth,
     clinicalMetrics,
+    operationalMetrics,
+    roomOccupancyHistory,
     
     // Actions
     setDateRange,
     setDepartmentFilter,
     setReportTypeFilter,
     refreshData,
-    exportReport,
+    calculateAverageWaitTime,
+    fetchStaffUtilization,
     loadData
   };
 } 

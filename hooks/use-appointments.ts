@@ -242,7 +242,7 @@ export function useAppointments() {
       }
 
       setAppointments((prev) => [...prev, newAppointment]);
-      return newAppointment;
+      await fetchAppointments();
     },
     []
   );

@@ -63,3 +63,157 @@ export type DeptCounts = {
 export type DeptOccupancy = {
   [key: string]: BedOccupancy;
 }
+
+
+export type FilterState = {
+  dateRange: { from: Date | undefined; to: Date | undefined };
+  departmentFilter: string;
+  reportTypeFilter: string;
+}
+
+// Add interfaces for clinical metrics and medical records
+export type MedicalRecord = {
+  id: string;
+  patient_id: string;
+  staff_id: string;
+  record_date: string;
+  diagnosis: string;
+  treatment: string;
+  prescription: any;
+  follow_up_date: string | null;
+  notes: string | null;
+  attachments: string[] | null;
+  vital_signs: any;
+}
+
+export type FinancialGrowth = {
+  revenueGrowth: number;
+  outstandingBillsGrowth: number;
+  insuranceClaimsGrowth: number;
+  collectionRateGrowth: number;
+}
+
+export type RevenueTrend = {
+  month: string;
+  revenue: number;
+  expenses: number;
+}
+
+export type PaymentDistribution = {
+  name: string;
+  value: number;
+}
+
+
+
+type DiagnosisCount = {
+  name: string;
+  count: number;
+}
+
+type TreatmentOutcome = {
+  treatment: string;
+  success: number;
+  failure: number;
+}
+
+type PatientOutcome = {
+  month: string;
+  improved: number;
+  stable: number;
+  deteriorated: number;
+}
+
+type ReadmissionRate = {
+  month: string;
+  rate: number;
+}
+
+type CommonProcedure = {
+  procedure: string;
+  count: number;
+  avgTime: number;
+  complicationRate: number;
+}
+
+export type ClinicalMetrics = {
+  patientsByAge?: Array<{
+    age: string;
+    count: number;
+  }>;
+  patientsByGender?: Array<{
+    gender: string;
+    count: number;
+  }>;
+  diagnosisFrequency?: DiagnosisCount[];
+  treatmentOutcomes?: TreatmentOutcome[];
+  patientOutcomes?: PatientOutcome[];
+  readmissionRates?: ReadmissionRate[];
+  commonProcedures?: CommonProcedure[];
+  patientSatisfaction?: {
+    rate: number;
+    change: number;
+  };
+  lengthOfStay?: {
+    days: number;
+    change: number;
+  };
+  readmissionRate?: {
+    rate: number;
+    change: number;
+  };
+  mortalityRate?: {
+    rate: number;
+    change: number;
+  };
+}
+
+// Add new interface for room occupancy history
+export interface RoomOccupancyHistory {
+  room_id: string | null;
+  room_number: string | null;
+  department_id: string | null;
+  department_name: string | null;
+  date: string | null;
+  patients_admitted: number | null;
+  current_patients: number | null;
+  capacity: number | null;
+  occupancy_rate: number | null;
+}
+
+// Add operational metrics interface
+export interface OperationalMetrics {
+  appointmentCompletionRate?: number;
+  noShowRate?: number;
+  averageWaitTime?: number;
+  bedOccupancyRate?: number;
+  roomUtilization?: Array<{
+    room: string;
+    utilizationRate: number;
+  }>;
+  staffUtilization?: Array<{
+    department: string;
+    utilizationRate: number;
+  }>;
+  bedOccupancy?: Array<BedOccupancy>;
+  staffPerformance?: Array<{
+    category: string;
+    nursing: number;
+    physicians: number;
+    support: number;
+  }>;
+  inventoryStatus?: Array<{
+    category: string;
+    inStock: number;
+    onOrder: number;
+    critical: boolean;
+  }>;
+  dailyAdmissions?: Array<{
+    day: string;
+    emergency: number;
+    scheduled: number;
+  }>;
+  staffUtilizationRate?: number;
+  staffUtilizationChange?: number;
+  roomOccupancyHistory?: RoomOccupancyHistory[];
+}

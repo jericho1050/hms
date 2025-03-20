@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { BedIcon, Filter, Search, UserPlus, Users } from "lucide-react"
 import { RoomDetailsDialog } from "@/components/rooms/room-details-dialog"
 import { AssignBedDialog } from "@/components/rooms/assign-bed-dialog"
@@ -16,16 +16,28 @@ import { assignBedToPatient, releaseBed } from "@/app/actions/rooms"
 import { useToast } from "@/hooks/use-toast"
 import { useStaff } from "@/hooks/use-staff"
 import { X } from "lucide-react"
+import { useRooms } from "@/hooks/use-rooms"
 
 interface RoomsManagementProps {
   initialRooms: Room[]
   initialDepartments: Department[]
 }
 
-export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManagementProps) {
-  const [rooms, setRooms] = useState<Room[]>(initialRooms)
-  const [filteredRooms, setFilteredRooms] = useState<Room[]>(initialRooms)
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments)
+export function RoomsManagement() {
+  const {
+    rooms,
+    setRooms,
+    departments,
+    setDepartments,
+    isLoading,
+    error,
+    getRoomsData,
+    getDepartmentsData,
+    getPatientsData,
+    getRoomHistory,
+  } = useRooms()
+
+  const [filteredRooms, setFilteredRooms] = useState<Room[]>(rooms);
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
@@ -46,8 +58,8 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
 
   useEffect(() => {
     // Calculate initial status counts
-    calculateStatusCounts(initialRooms)
-  }, [initialRooms])
+    calculateStatusCounts(rooms)
+  }, [rooms])
 
   useEffect(() => {
     // Filter rooms based on department and search query
@@ -121,7 +133,7 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
     })
   }
 
-  const handleAssignBed = async (roomId: string, bedId: string, patientId: string, admissionDate: string, expectedDischargeDate?: string, isEmergency: boolean = false) => {
+  const handleAssignBed = async (roomId: string, bedId: string, patientId: string, patientName:string | undefined, admissionDate: string, expectedDischargeDate?: string, isEmergency: boolean = false) => {
     try {
 
       const assignedBy = staffId || "00000000-0000-0000-0000-000000000000"
@@ -145,6 +157,7 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
               if (bed.id === bedId) {
                 return { 
                   ...bed, 
+                  patientName,
                   patientId,
                   admissionDate,
                   expectedDischargeDate
@@ -522,6 +535,7 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
               setSelectedRoom(updatedRoom)
             }
           }}
+          getRoomHistory={getRoomHistory}
         />
       )}
 
@@ -532,11 +546,12 @@ export function RoomsManagement({ initialRooms, initialDepartments }: RoomsManag
           bedId={selectedBed.bedId}
           room={rooms.find((r) => r.id === selectedBed.roomId)}
           onClose={() => setSelectedBed(null)}
-          onAssign={(patientId, admissionDate, expectedDischargeDate, isEmergency) => 
+          onAssign={(patientId, patientName, admissionDate, expectedDischargeDate, isEmergency) => 
             handleAssignBed(
               selectedBed.roomId, 
               selectedBed.bedId, 
               patientId, 
+              patientName,
               admissionDate,
               expectedDischargeDate,
               isEmergency

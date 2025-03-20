@@ -59,6 +59,17 @@ interface OperationalMetrics {
   }>
   staffUtilizationRate?: number
   staffUtilizationChange?: number
+  roomOccupancyHistory?: Array<{
+    room_id: string | null
+    room_number: string | null
+    department_id: string | null
+    department_name: string | null
+    date: string | null
+    patients_admitted: number | null
+    current_patients: number | null
+    capacity: number | null
+    occupancy_rate: number | null
+  }>
 }
 
 interface OperationalReportsProps {
@@ -121,6 +132,24 @@ export function OperationalReports({
 
   return (
     <div className="space-y-6">
+      {/* Beta notification banner */}
+      <div className="bg-amber-100 border-l-4 border-amber-500 text-amber-700 p-4 rounded-md">
+        <div className="flex">
+          <div className="flex-shrink-0">
+            <AlertTriangle className="h-5 w-5 text-amber-500" />
+          </div>
+          <div className="ml-3">
+            <p className="text-sm font-medium">
+              Beta Feature
+            </p>
+            <p className="text-sm mt-1">
+              This reports module is still under development. Some metrics may be incomplete or display test data.
+              Please report any issues you encounter.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Top level metrics */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
@@ -197,7 +226,54 @@ export function OperationalReports({
           </CardContent>
         </Card>
       </div>
-
+  {/* Resource Utilization Table */}
+  <Card>
+        <CardHeader>
+          <CardTitle>Resource Utilization</CardTitle>
+          <CardDescription>Efficiency of medical equipment and resources</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {hasRoomUtilization && operationalMetrics?.roomUtilization ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Resource</TableHead>
+                    <TableHead>Utilization</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {formattedResourceUtilization.map((resource) => (
+                    <TableRow key={resource.resource}>
+                      <TableCell className="font-medium">{resource.resource}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={resource.utilization} className="w-[60%]" />
+                          <span className="text-sm">{resource.utilization}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {resource.utilization > 90 ? (
+                          <Badge className="bg-red-100 text-red-800">Over Utilized</Badge>
+                        ) : resource.utilization > 75 ? (
+                          <Badge className="bg-green-100 text-green-800">Optimal</Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 text-amber-800">Under Utilized</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-32">
+              <p className="text-muted-foreground">No resource utilization data available for the selected filters.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
       {/* Charts section */}
       <div className="grid gap-4 md:grid-cols-2">
         {hasBedOccupancy && operationalMetrics?.bedOccupancy ? (
@@ -314,6 +390,104 @@ export function OperationalReports({
         )}
       </div>
 
+      {/* Room Occupancy History Chart */}
+      <Card className="md:col-span-2">
+        <CardHeader>
+          <CardTitle>Room Occupancy History</CardTitle>
+          <CardDescription>Historical room occupancy rates from the database</CardDescription>
+        </CardHeader>
+        <CardContent className="h-80">
+          {operationalMetrics?.roomOccupancyHistory && operationalMetrics.roomOccupancyHistory.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={operationalMetrics.roomOccupancyHistory.slice(0, 10)} // Take only the most recent 10 records
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 60,
+                }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="room_number" 
+                  angle={-45}
+                  textAnchor="end"
+                  height={60}
+                />
+                <YAxis 
+                  label={{ value: 'Occupancy Rate (%)', angle: -90, position: 'insideLeft' }} 
+                  domain={[0, 100]}
+                />
+                <Tooltip 
+                  formatter={(value: number, name: string) => {
+                    if (name === 'occupancy_rate') return [`${value.toFixed(1)}%`, 'Occupancy Rate'];
+                    return [value, name];
+                  }}
+                />
+                <Legend />
+                <Bar 
+                  dataKey="occupancy_rate" 
+                  name="Occupancy Rate" 
+                  fill="#8884d8" 
+                  animationDuration={1000} 
+                  isAnimationActive={true}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-muted-foreground">No room occupancy history data available.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Room Occupancy History Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Room Occupancy Details</CardTitle>
+          <CardDescription>Detailed view of room occupancy history</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {operationalMetrics?.roomOccupancyHistory && operationalMetrics.roomOccupancyHistory.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Room</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Capacity</TableHead>
+                  <TableHead>Current Patients</TableHead>
+                  <TableHead>Occupancy Rate</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {operationalMetrics.roomOccupancyHistory.slice(0, 8).map((room, i) => (
+                  <TableRow key={`${room.room_id || i}-${i}`}>
+                    <TableCell className="font-medium">{room.room_number || 'N/A'}</TableCell>
+                    <TableCell>{room.department_name || 'Unassigned'}</TableCell>
+                    <TableCell>{room.date ? new Date(room.date).toLocaleDateString() : 'N/A'}</TableCell>
+                    <TableCell>{room.capacity ?? 'N/A'}</TableCell>
+                    <TableCell>{room.current_patients ?? 'N/A'}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={room.occupancy_rate ?? 0} className="w-20" />
+                        <span>{(room.occupancy_rate ?? 0).toFixed(1)}%</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="p-4 text-center text-muted-foreground">
+              No room occupancy history data available.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Inventory Status */}
       <Card>
         <CardHeader>
@@ -352,54 +526,7 @@ export function OperationalReports({
         </CardContent>
       </Card>
 
-      {/* Resource Utilization Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Resource Utilization</CardTitle>
-          <CardDescription>Efficiency of medical equipment and resources</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {hasRoomUtilization && operationalMetrics?.roomUtilization ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Resource</TableHead>
-                    <TableHead>Utilization</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {formattedResourceUtilization.map((resource) => (
-                    <TableRow key={resource.resource}>
-                      <TableCell className="font-medium">{resource.resource}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress value={resource.utilization} className="w-[60%]" />
-                          <span className="text-sm">{resource.utilization}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {resource.utilization > 90 ? (
-                          <Badge className="bg-red-100 text-red-800">Over Utilized</Badge>
-                        ) : resource.utilization > 75 ? (
-                          <Badge className="bg-green-100 text-green-800">Optimal</Badge>
-                        ) : (
-                          <Badge className="bg-amber-100 text-amber-800">Under Utilized</Badge>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-32">
-              <p className="text-muted-foreground">No resource utilization data available for the selected filters.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+    
     </div>
   )
 }

@@ -48,7 +48,7 @@ interface AssignBedDialogProps {
   bedId: string
   room?: Room
   onClose: () => void
-  onAssign: (patientId: string, admissionDate: string, expectedDischargeDate?: string, isEmergency?: boolean) => void
+  onAssign: (patientId: string, patientName: string | undefined, admissionDate: string, expectedDischargeDate?: string, isEmergency?: boolean) => void
 }
 
 export function AssignBedDialog({ roomId, bedId, room, onClose, onAssign }: AssignBedDialogProps) {
@@ -126,9 +126,10 @@ export function AssignBedDialog({ roomId, bedId, room, onClose, onAssign }: Assi
       const formattedDischargeDate = expectedDischargeDate 
         ? format(expectedDischargeDate, "yyyy-MM-dd'T'HH:mm:ss") 
         : undefined
-      
+      const selectedPatient = patients.find(p => p.id === selectedPatientId);
       onAssign(
         selectedPatientId, 
+        selectedPatient?.name,
         formattedAdmissionDate, 
         formattedDischargeDate,
         isEmergency
@@ -225,7 +226,7 @@ export function AssignBedDialog({ roomId, bedId, room, onClose, onAssign }: Assi
                     mode="single"
                     selected={expectedDischargeDate}
                     onSelect={setExpectedDischargeDate}
-                    initialFocus
+                    autoFocus
                     disabled={(date) => date < (admissionDate || new Date())}
                   />
                 </PopoverContent>

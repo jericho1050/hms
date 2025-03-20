@@ -32,78 +32,16 @@ import jsPDF from "jspdf"
 import { formatCurrency } from "@/lib/utils"
 import autoTable from "jspdf-autotable"
 
-// Define types for our data structures
-type RevenueDept = {
-  name: string;
-  revenue: number;
-  target: number;
-}
 
-type InsuranceClaim = {
-  id: string;
-  patient: string;
-  amount: number;
-  status: string;
-  provider: string;
-  submittedDate: string;
-  paidDate: string | null;
-}
 
-type DemographicData = {
-  gender: string;
-  count: number;
-}
-
-type AgeData = {
-  age: string;
-  count: number;
-}
-
-type PatientDemographics = {
-  genderDistribution: DemographicData[];
-  ageDistribution: AgeData[];
-}
-
-type AppointmentStats = {
-  totalAppointments: number;
-  completedAppointments: number;
-  noShowAppointments: number;
-  pendingAppointments: number;
-  completionRate: number;
-  noShowRate: number;
-}
-
-type BedOccupancy = {
-  department: string;
-  total: number;
-  occupied: number;
-  available: number;
-}
-
-type FinancialSummary = {
-  totalRevenue: number;
-  outstandingBills: number;
-  insuranceClaimsCount: number;
-  collectionRate: number;
-}
-
-type StaffDeptMap = {
-  [key: string]: string;
-}
-
-type DeptCounts = {
-  [key: string]: number;
-}
-
-type DeptOccupancy = {
-  [key: string]: BedOccupancy;
-}
 
 export default function ReportsPage() {
   const { toast } = useToast()
   const [isSchedulerOpen, setIsSchedulerOpen] = useState(false)
   const [isExportOpen, setIsExportOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("financial")
+  const [isStaffUtilizationAvailable, setIsStaffUtilizationAvailable] = useState(false)
+
   
   // Use the useReports hook to get all report data and actions
   const {
@@ -117,16 +55,34 @@ export default function ReportsPage() {
     setReportTypeFilter,
     revenueByDept,
     insuranceClaims,
-    patientDemographics,
     appointmentStats,
     bedOccupancy,
     financialSummary,
     revenueTrends,
     paymentDistribution,
     financialGrowth,
+    calculateAverageWaitTime,
+    fetchStaffUtilization,
     clinicalMetrics,
     refreshData
   } = useReports();
+
+  // For Operational Reports
+  const [staffUtilization, setStaffUtilization] = useState<any>(null);
+
+  useEffect(() => {
+    const loadStaffUtilization = async () => {
+      try {
+        const data = await fetchStaffUtilization();
+        setStaffUtilization(data);
+        setIsStaffUtilizationAvailable(true);
+      } catch (error) {
+        console.error('Error fetching staff utilization:', error);
+        setIsStaffUtilizationAvailable(false);
+      }
+    };
+    loadStaffUtilization();
+  }, [fetchStaffUtilization]);
 
   const handleExportReport = (format: string) => {
     setIsExportOpen(false)
@@ -309,14 +265,10 @@ export default function ReportsPage() {
             })
           }
         } else if (activeTab === 'compliance') {
-          // Placeholder for compliance data
           doc.setFontSize(14)
           doc.text("Compliance Summary", 14, 70)
           doc.setFontSize(11)
-          doc.text("Compliance Rate: 95.3%", 20, 80)
-          doc.text("Incidents: 12", 20, 90)
-          doc.text("Open Investigations: 3", 20, 100)
-          doc.text("Resolved Issues: 9", 20, 110)
+          doc.text("This feature is currently under development and will be available soon.", 20, 80)
         }
         
         // Save the PDF
@@ -523,14 +475,13 @@ export default function ReportsPage() {
               outstandingBills: financialSummary.outstandingBills,
               insuranceClaims: financialSummary.insuranceClaimsCount,
               collectionRate: financialSummary.collectionRate,
-              revenueGrowth: 12.5, // Placeholder
-              outstandingBillsGrowth: 3.2, // Placeholder
-              insuranceClaimsGrowth: -5.4, // Placeholder
-              collectionRateGrowth: 2.1, // Placeholder
+              revenueGrowth: financialGrowth.revenueGrowth,
+              outstandingBillsGrowth: financialGrowth.outstandingBillsGrowth,
+              insuranceClaimsGrowth: financialGrowth.insuranceClaimsGrowth,
+              collectionRateGrowth: financialGrowth.collectionRateGrowth,
               revenueByDepartment: revenueByDept,
               revenueTrends: revenueTrends,
               paymentDistribution: paymentDistribution,
-              // financialGrowth is not defined in FinancialMetrics type
             }}
             insuranceClaims={insuranceClaims}
           />
@@ -546,73 +497,65 @@ export default function ReportsPage() {
         </TabsContent>
 
         <TabsContent value="operational" className="mt-0">
-          <OperationalReports
-            dateRange={dateRange}
-            departmentFilter={departmentFilter}
-            reportTypeFilter={reportTypeFilter}
-            operationalMetrics={{
-              appointmentCompletionRate: appointmentStats.completionRate || 0,
-              noShowRate: appointmentStats.noShowRate || 0,
-              averageWaitTime: 27, // Placeholder
-              bedOccupancyRate: bedOccupancy.length > 0 ? 
-                bedOccupancy.reduce((sum: number, dept: BedOccupancy) => sum + dept.occupied, 0) / 
-                bedOccupancy.reduce((sum: number, dept: BedOccupancy) => sum + dept.total, 0) * 100 : 0,
-              roomUtilization: bedOccupancy.map((dept: BedOccupancy) => ({
-                room: dept.department,
-                utilizationRate: dept.total > 0 ? (dept.occupied / dept.total) * 100 : 0
-              })),
-              staffUtilization: [
-                { department: "Emergency", utilizationRate: 95 },
-                { department: "Surgery", utilizationRate: 83 },
-                { department: "Cardiology", utilizationRate: 78 },
-                { department: "Neurology", utilizationRate: 85 },
-                { department: "Radiology", utilizationRate: 72 },
-                { department: "Pediatrics", utilizationRate: 65 },
-                { department: "Orthopedics", utilizationRate: 92 },
-                { department: "Oncology", utilizationRate: 88 },
-              ]
-            }}
-          />
+          {calculateAverageWaitTime() === undefined && !isStaffUtilizationAvailable ? (
+            // Only show partial development message if key metrics are missing
+            <div className="flex flex-col space-y-6">
+              <OperationalReports
+                dateRange={dateRange}
+                departmentFilter={departmentFilter}
+                reportTypeFilter={reportTypeFilter}
+                operationalMetrics={{
+                  appointmentCompletionRate: appointmentStats.completionRate || 0,
+                  noShowRate: appointmentStats.noShowRate || 0,
+                  bedOccupancyRate: bedOccupancy.length > 0 ? 
+                    bedOccupancy.reduce((sum, dept) => sum + dept.occupied, 0) / 
+                    bedOccupancy.reduce((sum, dept) => sum + dept.total, 0) * 100 : 0,
+                  roomUtilization: bedOccupancy.map((dept) => ({
+                    room: dept.department,
+                    utilizationRate: dept.total > 0 ? (dept.occupied / dept.total) * 100 : 0
+                  }))
+                }}
+              />
+              <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mt-4">
+                <p className="text-yellow-700 dark:text-yellow-300 text-sm">
+                  Some operational metrics are currently under development and will be available soon.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <OperationalReports
+              dateRange={dateRange}
+              departmentFilter={departmentFilter}
+              reportTypeFilter={reportTypeFilter}
+              operationalMetrics={{
+                appointmentCompletionRate: appointmentStats.completionRate || 0,
+                noShowRate: appointmentStats.noShowRate || 0,
+                averageWaitTime: calculateAverageWaitTime() || 0,
+                bedOccupancyRate: bedOccupancy.length > 0 ? 
+                  bedOccupancy.reduce((sum, dept) => sum + dept.occupied, 0) / 
+                  bedOccupancy.reduce((sum, dept) => sum + dept.total, 0) * 100 : 0,
+                roomUtilization: bedOccupancy.map((dept) => ({
+                  room: dept.department,
+                  utilizationRate: dept.total > 0 ? (dept.occupied / dept.total) * 100 : 0
+                })),
+                staffUtilization: staffUtilization
+              }}
+            />
+          )}
         </TabsContent>
-
         <TabsContent value="compliance" className="mt-0">
-          <ComplianceReports
-            dateRange={dateRange}
-            departmentFilter={departmentFilter}
-            reportTypeFilter={reportTypeFilter}
-            complianceMetrics={{
-              medicationErrors: [
-                { department: 'Emergency', count: 5, change: -2 },
-                { department: 'Surgery', count: 3, change: 1 },
-                { department: 'Pharmacy', count: 4, change: -1 }
-              ],
-              incidentReports: [
-                { category: 'Falls', count: 3, previousCount: 4 },
-                { category: 'Medication', count: 2, previousCount: 3 },
-                { category: 'Equipment', count: 1, previousCount: 1 },
-                { category: 'Documentation', count: 2, previousCount: 0 }
-              ],
-              regulatoryCompliance: [
-                { regulation: 'HIPAA', complianceRate: 98, status: "compliant" },
-                { regulation: 'Safety', complianceRate: 92, status: "compliant" },
-                { regulation: 'Medical Records', complianceRate: 88, status: "at-risk" },
-                { regulation: 'Staff Credentials', complianceRate: 100, status: "compliant" }
-              ],
-              auditsCompleted: [
-                { department: 'Internal Medicine', completed: 2, total: 3 },
-                { department: 'Surgery', completed: 1, total: 2 },
-                { department: 'Pediatrics', completed: 1, total: 1 },
-                { department: 'Emergency', completed: 1, total: 3 }
-              ],
-              riskAssessments: [
-                { area: 'Infection Control', riskLevel: 25, priority: 'medium' },
-                { area: 'Medication Safety', riskLevel: 35, priority: 'high' },
-                { area: 'Patient Falls', riskLevel: 42, priority: 'high' },
-                { area: 'Equipment Safety', riskLevel: 18, priority: 'low' },
-                { area: 'Data Security', riskLevel: 30, priority: 'medium' }
-              ]
-            }}
-          />
+          {/* Replace with development notice since we don't have compliance data yet */}
+          <div className="flex flex-col items-center justify-center p-8 text-center">
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-6 rounded-lg max-w-md">
+              <h3 className="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+                Feature Under Development
+              </h3>
+              <p className="text-yellow-700 dark:text-yellow-300">
+                Compliance reporting is currently under development and will be available soon. 
+                This feature will include medication error tracking, incident reporting, and regulatory compliance monitoring.
+              </p>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
