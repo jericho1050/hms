@@ -30,3 +30,20 @@ export const getShiftForDate = (staff: Staff, date: Date) => {
   const dayName = format(date, "EEEE").toLowerCase() as keyof typeof staff.availability.recurring;
   return staff.availability?.recurring?.[dayName] || "off";
 };
+
+// Helper function to calculate age from date of birth
+export function calculateAge(dateOfBirth: string): number {
+  const today = new Date();
+  const birthDate = new Date(dateOfBirth);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDifference = today.getMonth() - birthDate.getMonth();
+
+  if (
+    monthDifference < 0 ||
+    (monthDifference === 0 && today.getDate() < birthDate.getDate())
+  ) {
+    age--;
+  }
+
+  return age;
+}

@@ -286,6 +286,73 @@ export function usePatientData() {
     }
   }, []);
 
+  const getPaginatedPatients = useCallback(async (
+    page: number = 0,
+    pageSize: number = 10,
+    searchQuery?: string,
+    genderFilter?: string,
+    statusFilter?: string
+  ): Promise<{
+    patients: Patient[];
+    totalCount: number;
+    error?: any;
+  }> => {
+    try {
+      
+      // Calculate range
+      const start = page * pageSize;
+      const end = start + pageSize - 1;
+      
+      // Start building the query
+      let query = supabase
+        .from('patients')
+        .select('*', { count: 'exact' });
+      
+      // Apply gender filter if not "all" - now using case-insensitive ilike
+      if (genderFilter && genderFilter !== "all") {
+        query = query.ilike('gender', genderFilter);
+      }
+      
+      // Apply status filter if not "all"
+      if (statusFilter && statusFilter !== "all") {
+        query = query.eq('status', statusFilter);
+      }
+      
+      // Apply search filter if provided
+      if (searchQuery && searchQuery.trim() !== '') {
+        const searchTerms = `%${searchQuery.toLowerCase().trim()}%`;
+        
+        // Search across multiple columns with OR
+        query = query.or(
+          `first_name.ilike.${searchTerms},last_name.ilike.${searchTerms},email.ilike.${searchTerms}`
+        );
+      }
+      
+      // Apply pagination and ordering
+      const { data, error, count } = await query
+        .order('created_at', { ascending: false })
+        .range(start, end);
+      
+      if (error) throw error;
+      
+      // Map database records to our Patient type
+      const patients = data ? data.map(mapDbPatientToPatient) : [];
+      
+      return {
+        patients,
+        totalCount: count || 0,
+        error: null
+      };
+    } catch (error) {
+      console.error("Server action error fetching paginated patients:", error);
+      return {
+        patients: [],
+        totalCount: 0,
+        error
+      };
+    }
+  }, []);
+
   // Set up real-time database changes
   useEffect(() => {
     // Initial data fetch
@@ -327,6 +394,8 @@ export function usePatientData() {
     updatePatient,
     deletePatient,
     handlePatientChange,
-    handleBillingChange
+    handleBillingChange,
+    getPaginatedPatients
+
   }
 }

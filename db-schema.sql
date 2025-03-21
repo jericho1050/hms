@@ -184,7 +184,6 @@ CREATE TABLE public.patients (
   insurance_id text NULL,
   emergency_contact_name text NULL,
   emergency_contact_phone text NULL,
-  medical_history jsonb NULL,
   allergies text[] NULL,
   blood_type text NULL,
   marital_status text NULL,
@@ -316,6 +315,26 @@ CREATE TABLE financial_historical_metrics (
 
 -- Index for faster queries on financial historical metrics
 CREATE INDEX idx_financial_metrics_period_name ON financial_historical_metrics(period, metric_name);
+
+CREATE TABLE public.ai_diagnosis_logs (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  patient_id uuid NOT NULL,
+  user_id uuid NOT NULL,
+  symptoms text NOT NULL,
+  medical_history text,
+  ai_response text NOT NULL,
+  is_helpful boolean,
+  feedback text,
+  CONSTRAINT ai_diagnosis_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT ai_diagnosis_logs_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES patients(id),
+  CONSTRAINT ai_diagnosis_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+) TABLESPACE pg_default;
+
+-- Add indexes for performance
+CREATE INDEX IF NOT EXISTS idx_ai_diagnosis_logs_patient ON public.ai_diagnosis_logs USING btree (patient_id);
+CREATE INDEX IF NOT EXISTS idx_ai_diagnosis_logs_user ON public.ai_diagnosis_logs USING btree (user_id);
 
 --------------------------------------------------------------------------------------------------------------
 
@@ -713,6 +732,11 @@ EXECUTE FUNCTION update_financial_historical_metrics();
 -- Optional: Run the function once to populate current metrics
 SELECT update_financial_historical_metrics(); 
 
+CREATE TRIGGER update_ai_diagnosis_logs_updated_at
+BEFORE UPDATE ON public.ai_diagnosis_logs
+FOR EACH ROW
+EXECUTE FUNCTION public.update_updated_at_column();
+
 -------------------------------------------------
 
 
@@ -783,3 +807,17 @@ FOR SELECT
 TO authenticated
 USING (is_user_in_staff());
 
+CREATE POLICY "Admin can access all AI diagnosis logs" ON public.ai_diagnosis_logs
+FOR ALL
+TO authenticated
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Staff can read AI diagnosis logs" ON public.ai_diagnosis_logs
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+CREATE POLICY "Staff can insert their own logs" ON public.ai_diagnosis_logs
+FOR INSERT
+TO authenticated
+WITH CHECK (is_user_in_staff() AND user_id = auth.uid());

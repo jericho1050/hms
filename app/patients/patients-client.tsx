@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { PlusCircle, Search } from 'lucide-react';
 import type { Patient } from '@/types/patients';
-import { getPaginatedPatients } from '@/app/actions/patients';
 import { useToast } from '@/hooks/use-toast';
 import { PatientFormValues } from '@/components/patients/new-patient-form';
 
@@ -43,7 +42,7 @@ export default function PatientsClient({
   const { toast } = useToast();
 
   // Use our refactored hook that now uses server actions for mutations
-  const { patients, isLoading, createPatient, updatePatient, deletePatient } =
+  const { patients, isLoading, createPatient, updatePatient, deletePatient, getPaginatedPatients} =
     usePatientData();
 
   // Fetch paginated patients with server action
@@ -194,9 +193,9 @@ export default function PatientsClient({
             <SelectContent>
               <SelectGroup>
                 <SelectItem value='all'>All Genders</SelectItem>
-                <SelectItem value='male'>Male</SelectItem>
-                <SelectItem value='female'>Female</SelectItem>
-                <SelectItem value='other'>Other</SelectItem>
+                <SelectItem value='Male'>Male</SelectItem>
+                <SelectItem value='Female'>Female</SelectItem>
+                <SelectItem value='Other'>Other</SelectItem>
               </SelectGroup>
             </SelectContent>
           </Select>

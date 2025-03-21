@@ -4,13 +4,12 @@ import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
 import { NavBar } from "@/components/nav-bar"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
   title: "Hospital Management System",
   description: "A modern hospital management system built with Next.js and Supabase",
-    generator: 'v0.dev'
+  generator: 'v0.dev'
 }
 
 export default function RootLayout({
