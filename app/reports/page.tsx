@@ -64,6 +64,7 @@ export default function ReportsPage() {
     calculateAverageWaitTime,
     fetchStaffUtilization,
     clinicalMetrics,
+    operationalMetrics,
     refreshData
   } = useReports();
 
@@ -504,17 +505,7 @@ export default function ReportsPage() {
                 dateRange={dateRange}
                 departmentFilter={departmentFilter}
                 reportTypeFilter={reportTypeFilter}
-                operationalMetrics={{
-                  appointmentCompletionRate: appointmentStats.completionRate || 0,
-                  noShowRate: appointmentStats.noShowRate || 0,
-                  bedOccupancyRate: bedOccupancy.length > 0 ? 
-                    bedOccupancy.reduce((sum, dept) => sum + dept.occupied, 0) / 
-                    bedOccupancy.reduce((sum, dept) => sum + dept.total, 0) * 100 : 0,
-                  roomUtilization: bedOccupancy.map((dept) => ({
-                    room: dept.department,
-                    utilizationRate: dept.total > 0 ? (dept.occupied / dept.total) * 100 : 0
-                  }))
-                }}
+                operationalMetrics={operationalMetrics}
               />
               <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg mt-4">
                 <p className="text-yellow-700 dark:text-yellow-300 text-sm">
@@ -538,7 +529,36 @@ export default function ReportsPage() {
                   room: dept.department,
                   utilizationRate: dept.total > 0 ? (dept.occupied / dept.total) * 100 : 0
                 })),
-                staffUtilization: staffUtilization
+                staffUtilization: staffUtilization,
+                dailyAdmissions: operationalMetrics?.dailyAdmissions || [
+                  { day: "Mon", emergency: 12, scheduled: 28 },
+                  { day: "Tue", emergency: 8, scheduled: 30 },
+                  { day: "Wed", emergency: 10, scheduled: 25 },
+                  { day: "Thu", emergency: 15, scheduled: 22 },
+                  { day: "Fri", emergency: 7, scheduled: 32 },
+                  { day: "Sat", emergency: 18, scheduled: 15 },
+                  { day: "Sun", emergency: 20, scheduled: 10 }
+                ],
+                bedOccupancy: bedOccupancy,
+                staffPerformance: operationalMetrics?.staffPerformance || [
+
+                ],
+                inventoryStatus: operationalMetrics?.inventoryStatus || [
+
+                ],
+                roomOccupancyHistory: operationalMetrics?.roomOccupancyHistory && operationalMetrics.roomOccupancyHistory.length > 0 
+                  ? operationalMetrics.roomOccupancyHistory 
+                  : Array.from({ length: 1 }, (_, i) => ({
+                      room_id: ``,
+                      room_number: ``,
+                      department_id: ``,
+                      department_name: bedOccupancy[i % bedOccupancy.length]?.department || `Department ${i}`,
+                      date: new Date().toISOString(),
+                      patients_admitted: 0,
+                      current_patients: 0,
+                      capacity: 0,
+                      occupancy_rate: 0
+                    }))
               }}
             />
           )}

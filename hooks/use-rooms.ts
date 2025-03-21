@@ -310,6 +310,49 @@ export function useRooms() {
     }
   }, []);
 
+  const getRoomOccupancyHistory = useCallback(async (dateRange?: { from: Date | undefined; to: Date | undefined }) => {
+    setError(null);
+    try {
+      const supabase = createClient();
+      
+      let query = supabase
+        .from('room_occupancy_history')
+        .select('*')
+        .order('date', { ascending: false });
+      
+      // Apply date filter if provided
+      if (dateRange?.from && dateRange?.to) {
+        const fromDate = dateRange.from.toISOString().split('T')[0];
+        const toDate = dateRange.to.toISOString().split('T')[0];
+        
+        query = query
+          .gte('date', fromDate)
+          .lte('date', toDate);
+      }
+      
+      const { data, error } = await query;
+      
+      if (error) {
+        throw new Error(`Error fetching room occupancy history: ${error.message}`);
+      }
+      
+      // Make sure all numeric fields are properly converted
+      const formattedData = data?.map(room => ({
+        ...room,
+        occupancy_rate: room.occupancy_rate !== null ? Number(room.occupancy_rate) : 0,
+        current_patients: room.current_patients !== null ? Number(room.current_patients) : 0,
+        capacity: room.capacity !== null ? Number(room.capacity) : 0,
+        patients_admitted: room.patients_admitted !== null ? Number(room.patients_admitted) : 0
+      })) || [];
+      
+      return { roomOccupancyHistory: formattedData, error: null };
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
+      setError(errorMessage);
+      return { roomOccupancyHistory: [], error: errorMessage };
+    }
+  }, []);
+
   useEffect(() => {
     getRoomsData();
     getDepartmentsData();
@@ -327,5 +370,6 @@ export function useRooms() {
     getDepartmentsData,
     getPatientsData,
     getRoomHistory,
+    getRoomOccupancyHistory,
   };
 }

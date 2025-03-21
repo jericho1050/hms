@@ -250,7 +250,7 @@ export function OperationalReports({
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Progress value={resource.utilization} className="w-[60%]" />
-                          <span className="text-sm">{resource.utilization}%</span>
+                          <span className="text-sm">{resource.utilization.toFixed(2)}%</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -429,15 +429,17 @@ export function OperationalReports({
                 <Bar 
                   dataKey="occupancy_rate" 
                   name="Occupancy Rate" 
-                  fill="#8884d8" 
+                  fill="#8884d8"
+                  radius={[4, 4, 0, 0]} 
                   animationDuration={1000} 
                   isAnimationActive={true}
                 />
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <div className="flex items-center justify-center h-full">
+            <div className="flex flex-col items-center justify-center h-full gap-2">
               <p className="text-muted-foreground">No room occupancy history data available.</p>
+              <p className="text-xs text-muted-foreground">Try adjusting the date range filter or refreshing the page.</p>
             </div>
           )}
         </CardContent>
@@ -481,8 +483,9 @@ export function OperationalReports({
               </TableBody>
             </Table>
           ) : (
-            <div className="p-4 text-center text-muted-foreground">
-              No room occupancy history data available.
+            <div className="p-4 text-center">
+              <p className="text-muted-foreground">No room occupancy history data available.</p>
+              <p className="text-xs text-muted-foreground mt-2">Try adjusting the date range filter or refreshing the page.</p>
             </div>
           )}
         </CardContent>
