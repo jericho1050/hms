@@ -58,6 +58,7 @@ CareSanar is an innovative Hospital Management System designed to streamline and
 - 📅 [Appointment and Staff Demo](https://github.com/user-attachments/assets/755fbf2c-7009-4c88-aad3-bf2caefc8631)
 - 🏥 [Rooms and Reports & Analytics Demo](https://github.com/user-attachments/assets/e74f5927-043e-4dda-a73b-ca6bc8a8e12f)
 - 📦 [Inventory Demo](https://github.com/user-attachments/assets/6e810481-6ea5-4dc5-a7fe-ec18d0828f1c)
+- 🧾💰 [Billing and Invoice Demo](https://github.com/user-attachments/assets/aebd8bfc-4892-46f3-a81b-a82ac23decaf)
 
 <!--
 **Run from your browser:**
