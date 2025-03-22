@@ -302,7 +302,7 @@ export function InventoryManagement() {
         </Select>
 
         <div className="flex-1 flex justify-end">
-          <Button onClick={() => setAddDialogOpen(true)} disabled={isLoading}>
+          <Button onClick={() => setAddDialogOpen(true)} disabled={isLoading} data-testid="add-item-button">
             <Plus className="mr-2 h-4 w-4" /> Add Item
           </Button>
         </div>
