@@ -96,6 +96,7 @@ CREATE TABLE public.billing (
   invoice_date date NOT NULL,
   due_date date NULL,
   total_amount numeric NOT NULL,
+  total_paid numeric DEFAULT 0,
   payment_status text NOT NULL,
   payment_method text NULL,
   payment_date date NULL,

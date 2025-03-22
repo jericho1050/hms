@@ -7,8 +7,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-
-export function formatCurrency(value: number, maximumFractionDigits: number = 0): string {
+export function formatCurrency(value: number, maximumFractionDigits: number = 2): string {
   // Ensure maximumFractionDigits is within the valid range (0-20)
   const validMaxFractionDigits = Math.min(Math.max(0, maximumFractionDigits), 20);
   
@@ -17,6 +16,12 @@ export function formatCurrency(value: number, maximumFractionDigits: number = 0)
     currency: "USD",
     maximumFractionDigits: validMaxFractionDigits,
   }).format(value);
+}
+
+export function formatDate(dateString: string): string {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  return format(date, 'MMM d, yyyy');
 }
 
 export const getShiftForDate = (staff: Staff, date: Date) => {
@@ -37,13 +42,11 @@ export function calculateAge(dateOfBirth: string): number {
   const birthDate = new Date(dateOfBirth);
   let age = today.getFullYear() - birthDate.getFullYear();
   const monthDifference = today.getMonth() - birthDate.getMonth();
-
   if (
     monthDifference < 0 ||
     (monthDifference === 0 && today.getDate() < birthDate.getDate())
   ) {
     age--;
   }
-
   return age;
 }

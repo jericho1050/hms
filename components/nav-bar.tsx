@@ -16,6 +16,7 @@ import {
   BedIcon,
   BarChart3,
   Package,
+  DollarSign
 } from "lucide-react"
 import { Button } from '@/components/ui/button';
 import {
@@ -60,6 +61,7 @@ export function NavBar() {
     { name: "Rooms", href: "/rooms", icon: BedIcon },
     { name: "Reports", href: "/reports", icon: BarChart3 },
     { name: "Inventory", href: "/inventory", icon: Package },
+    { name: "Billing", href: "/billing", icon: DollarSign },
   ]
 
     // Determine which items to show in the main navigation vs. the "More" dropdown

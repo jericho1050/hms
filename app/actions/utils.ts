@@ -1,5 +1,4 @@
 import type { Patient } from "@/types/patients";
-
 // Define the shape of database patient records for mapping
 export interface DbPatient {
   id: string;
@@ -94,3 +93,4 @@ export const mapPatientToDbPatient = (patient: Patient): Omit<DbPatient, 'create
     status: patient.status
   };
 }
+
