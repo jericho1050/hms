@@ -4,7 +4,6 @@ import {
   createBillingRecord, 
   updateBillingRecord, 
   deleteBillingRecord, 
-  getBillingStats 
 } from '@/app/actions/billing';
 import { BillingFormData, BillingFilter, BillingRecord, BillingWithPatient } from '@/types/billing';
 import { supabase } from '@/utils/supabase/client';
@@ -37,6 +36,84 @@ export function useBilling() {
       setIsLoading(false);
     }
   };
+
+  // async function getPatientBillingRecords(patientId: string): Promise<BillingRecord[]> {
+  
+  //   const { data, error } = await supabase
+  //     .from('billing')
+  //     .select('*')
+  //     .eq('patient_id', patientId)
+  //     .order('invoice_date', { ascending: false });
+  
+  //   if (error) {
+  //     console.error('Error fetching patient billing records:', error);
+  //     throw new Error('Failed to fetch patient billing records');
+  //   }
+  
+  //   // Parse the services JSON field into proper BillingService array
+  //   const parsedRecords = data.map(record => ({
+  //     ...record,
+  //     services: Array.isArray(record.services) 
+  //       ? record.services.map((service: any) => ({
+  //           name: service.name,
+  //           quantity: service.quantity,
+  //           price: service.price
+  //         }))
+  //       : []
+  //   }));
+  
+  //   return parsedRecords as BillingRecord[];
+  // }
+  
+  async function getBillingStats() {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+    if (!user || userError) {
+      throw new Error('Unauthorized');
+    }
+  
+    // Get current month's revenue
+    const currentDate = new Date();
+    const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  
+    const { data: monthlyRevenue, error: revenueError } = await supabase
+      .from('billing')
+      .select('total_amount')
+      .gte('invoice_date', firstDayOfMonth.toISOString().split('T')[0])
+      .lte('invoice_date', lastDayOfMonth.toISOString().split('T')[0]);
+  
+    // Get outstanding payments
+    const { data: outstandingPayments, error: outstandingError } = await supabase
+      .from('billing')
+      .select('total_amount')
+      .in('payment_status', ['pending', 'overdue']);
+  
+    // Get recent transactions
+    const { data: recentTransactions, error: transactionsError } = await supabase
+      .from('billing')
+      .select(`
+        *,
+        patient:patients(id, first_name, last_name)
+      `)
+      .order('created_at', { ascending: false })
+      .limit(5);
+  
+    if (revenueError || outstandingError || transactionsError) {
+      console.error('Error fetching billing stats');
+      throw new Error('Failed to fetch billing statistics');
+    }
+  
+    const totalMonthlyRevenue = monthlyRevenue?.reduce((sum: number, item: any) => sum + Number(item.total_amount), 0) || 0;
+    const totalOutstanding = outstandingPayments?.reduce((sum: number, item: any) => sum + Number(item.total_amount), 0) || 0;
+  
+    return {
+      totalMonthlyRevenue,
+      totalOutstanding,
+      recentTransactions
+    };
+  }
+
 
 
 async function getBillingRecords(filters?: BillingFilter): Promise<BillingWithPatient[]> {

@@ -9,6 +9,53 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      ai_diagnosis_logs: {
+        Row: {
+          ai_response: string
+          created_at: string
+          feedback: string | null
+          id: string
+          is_helpful: boolean | null
+          medical_history: string | null
+          patient_id: string
+          symptoms: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_response: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          is_helpful?: boolean | null
+          medical_history?: string | null
+          patient_id: string
+          symptoms: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_response?: string
+          created_at?: string
+          feedback?: string | null
+          id?: string
+          is_helpful?: boolean | null
+          medical_history?: string | null
+          patient_id?: string
+          symptoms?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_diagnosis_logs_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       appointments: {
         Row: {
           appointment_date: string
@@ -89,6 +136,7 @@ export type Database = {
           services: Json
           tax: number | null
           total_amount: number
+          total_paid: number | null
           updated_at: string
         }
         Insert: {
@@ -107,6 +155,7 @@ export type Database = {
           services: Json
           tax?: number | null
           total_amount: number
+          total_paid?: number | null
           updated_at?: string
         }
         Update: {
@@ -125,6 +174,7 @@ export type Database = {
           services?: Json
           tax?: number | null
           total_amount?: number
+          total_paid?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -428,7 +478,6 @@ export type Database = {
           insurance_provider: string | null
           last_name: string
           marital_status: string | null
-          medical_history: Json | null
           past_surgeries: string | null
           phone: string
           policy_holder_name: string | null
@@ -460,7 +509,6 @@ export type Database = {
           insurance_provider?: string | null
           last_name: string
           marital_status?: string | null
-          medical_history?: Json | null
           past_surgeries?: string | null
           phone: string
           policy_holder_name?: string | null
@@ -492,7 +540,6 @@ export type Database = {
           insurance_provider?: string | null
           last_name?: string
           marital_status?: string | null
-          medical_history?: Json | null
           past_surgeries?: string | null
           phone?: string
           policy_holder_name?: string | null

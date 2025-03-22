@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Download, FileText, Pencil, Printer, Trash2 } from 'lucide-react';
+import { DollarSign, Download, FileText, Mail, Pencil, Printer, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -20,6 +20,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue, 
+} from "@/components/ui/select";
+import { sendInvoiceEmail, processPayment } from '@/app/actions/billing';
 
 interface BillingDetailsProps {
   billingId: string;
@@ -30,6 +41,106 @@ interface BillingDetailsProps {
 export default function BillingDetails({ billingId, billingRecord, onClose }: BillingDetailsProps) {
   const { isLoading } = useBilling();
   const { toast } = useToast();
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
+  const [openPaymentDialog, setOpenPaymentDialog] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [paymentNotes, setPaymentNotes] = useState<string>("");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
+  const handleSendEmail = async () => {
+    try {
+      setIsSendingEmail(true);
+      const result = await sendInvoiceEmail(billingId);
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: result.message,
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error sending invoice email:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to send invoice email',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
+  const handleProcessPayment = async () => {
+    try {
+      setIsProcessingPayment(true);
+      
+      if (!paymentAmount || !paymentMethod) {
+        toast({
+          title: 'Validation Error',
+          description: 'Payment amount and method are required',
+          variant: 'destructive',
+        });
+        setIsProcessingPayment(false);
+        return;
+      }
+      
+      const amount = parseFloat(paymentAmount);
+      if (isNaN(amount) || amount <= 0) {
+        toast({
+          title: 'Validation Error',
+          description: 'Payment amount must be a positive number',
+          variant: 'destructive',
+        });
+        setIsProcessingPayment(false);
+        return;
+      }
+
+      const result = await processPayment(
+        billingId, 
+        amount, 
+        paymentMethod, 
+        paymentNotes
+      );
+      
+      if (result.success) {
+        toast({
+          title: 'Success',
+          description: result.message,
+        });
+        setOpenPaymentDialog(false);
+        // Reset form
+        setPaymentAmount("");
+        setPaymentMethod("");
+        setPaymentNotes("");
+        
+        // You would want to refresh the billing record here
+        // This is a temporary solution until you implement a more elegant approach
+        onClose(); // Close and refresh
+      } else {
+        toast({
+          title: 'Error',
+          description: result.message,
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to process payment',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
 
   if (isLoading) {
     return <div className="text-center py-4">Loading invoice details...</div>;
@@ -112,7 +223,12 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
               </tr>
             </thead>
             <tbody>
-              {billingRecord.services.map((service: any, index: number) => (
+              {(Array.isArray(billingRecord.services) 
+                ? billingRecord.services 
+                : typeof billingRecord.services === 'string' 
+                  ? JSON.parse(billingRecord.services || '[]') 
+                  : []
+              ).map((service: any, index: number) => (
                 <tr key={index} className="border-t">
                   <td className="p-3">{service.name}</td>
                   <td className="p-3 text-center">{service.quantity}</td>
@@ -122,6 +238,14 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
                   </td>
                 </tr>
               ))}
+              {(!billingRecord.services || 
+                (Array.isArray(billingRecord.services) && billingRecord.services.length === 0)) && (
+                <tr className="border-t">
+                  <td colSpan={4} className="p-3 text-center text-muted-foreground">
+                    No services found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -140,11 +264,19 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
             {billingRecord.notes && (
               <div>
                 <p className="text-sm text-muted-foreground">Notes</p>
-                <p>{billingRecord.notes}</p>
+                <p className="whitespace-pre-line break-words max-w-[300px] md:max-w-[400px]">
+                  {billingRecord.notes.replace(
+                    /Invoice emailed on (\d{4}-\d{2}-\d{2})T(\d{2}:\d{2}:\d{2}\.\d+)Z/g, 
+                    (match, date, time) => {
+                      const formattedDate = new Date(`${date}T${time}Z`);
+                      return `Invoice emailed on ${formatDate(formattedDate.toISOString())} at ${formattedDate.toLocaleTimeString()}`;
+                    }
+                  )}
+                </p>
               </div>
             )}
           </div>
-          <div className="space-y-2 text-right min-w-[150px]">
+          <div className="space-y-2 min-w-[150px]">
             {billingRecord.insurance_coverage && (
               <>
                 <div className="flex justify-between">
@@ -165,18 +297,58 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
                 <p>{billingRecord.tax}%</p>
               </div>
             )}
+                        {/* Add this for paid amount and balance */}
+            {(billingRecord.total_paid ?? 0) > 0 && (
+              <>
+                <div className="flex justify-between">
+                  <p>Paid Amount:</p>
+                  <p className="text-green-600">{formatCurrency(billingRecord.total_paid ?? 0)}</p>
+                </div>
+                <div className="flex justify-between font-semibold">
+                  <p>Balance Due:</p>
+                  <p className={billingRecord.total_amount > (billingRecord.total_paid ?? 0) ? 'text-red-600' : 'text-green-600'}>
+                    {formatCurrency(Math.max(0, billingRecord.total_amount - (billingRecord.total_paid ?? 0)))}
+                  </p>
+                </div>
+              </>
+            )}
             <Separator />
             <div className="flex justify-between font-bold text-lg">
-              <p>Total:</p>
-              <p>{formatCurrency(billingRecord.total_amount)}</p>
-            </div>
+    <p>Total:</p>
+    <p>{formatCurrency(billingRecord.total_amount)}</p>
+  </div>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div className="flex justify-end">
-        <div className="space-x-2">
+    <div className="space-y-4">
+      {/* Primary Actions */}
+      <div className="flex flex-wrap gap-2 justify-between">
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={() => setOpenPaymentDialog(true)}
+            disabled={billingRecord.payment_status === 'paid' || billingRecord.payment_status === 'cancelled'}
+          >
+            <DollarSign className="h-4 w-4 mr-2" />
+            Process Payment
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleSendEmail} 
+            disabled={isSendingEmail}
+          >
+            <Mail className="h-4 w-4 mr-2" />
+            {isSendingEmail ? 'Sending...' : 'Send Invoice Email'}
+          </Button>
+        </div>
+        
+        {/* Export Actions */}
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm">
             <Printer className="h-4 w-4 mr-2" /> Print
           </Button>
@@ -185,6 +357,72 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
           </Button>
         </div>
       </div>
+    </div>
+
+      {/* Payment Dialog */}
+      <Dialog open={openPaymentDialog} onOpenChange={setOpenPaymentDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Process Payment</DialogTitle>
+            <DialogDescription>
+              Enter payment details for invoice #{billingRecord.id.substring(0, 8)}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment-amount">Payment Amount ($)</Label>
+              <Input
+                id="payment-amount"
+                type="number"
+                min="0.01"
+                step="0.01"
+                placeholder="Enter amount"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Outstanding: {formatCurrency(billingRecord.total_amount - (billingRecord.total_paid || 0))} </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="payment-method">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="credit_card">Credit Card</SelectItem>
+                  <SelectItem value="debit_card">Debit Card</SelectItem>
+                  <SelectItem value="insurance">Insurance</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="check">Check</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="payment-notes">Notes</Label>
+              <Textarea
+                id="payment-notes"
+                placeholder="Any additional notes about this payment"
+                value={paymentNotes}
+                onChange={(e) => setPaymentNotes(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpenPaymentDialog(false)}>Cancel</Button>
+            <Button 
+              onClick={handleProcessPayment}
+              disabled={isProcessingPayment}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {isProcessingPayment ? 'Processing...' : 'Process Payment'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -7,6 +7,7 @@ export interface BillingRecord {
   patient_id: string;
   invoice_date: string;
   due_date: string | null;
+  total_paid?: number;
   total_amount: number;
   payment_status: 'paid' | 'pending' | 'overdue' | 'cancelled' | 'partially_paid';
   payment_method: string | null;
