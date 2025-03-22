@@ -77,13 +77,14 @@ CareSanar is an innovative Hospital Management System designed to streamline and
 
 - **Data Analytics**: Data visualization for various pages, Visualize key metrics and operational data in real-time
 - **Patient Management**: Efficiently manage patient records, admissions, and discharges.
-- **Appointment Management**: Efficiently manage and track appointments
-- **Staff Management**: Staff management to ensure optimal resource allocation.
+- **Appointment Management**:Efficiently manage and track appointments, with insights.
+- **Staff Management**: Staff management to ensure optimal resource allocation. Schedules staff based on their availability.
 - **Bed Management**: Bed management to ensure optimal ocuppancy allocation.
 - **Reports Scheduler**: Simplify sending of reports with automated email reports.
 - **Medical Records**: Maintain secure and accessible electronic medical records.
-- **Iventory Management**: Keep track of inventory and give insigths to each item.
-- **AI-Powered Diagnosis Assistant**: Leverage AI to support medical healthcares identify and decision support.
+- **Iventory Management**: Keep track of inventory and give insigths to each item. Ensuring an item doesn't go low in stock.
+- **AI-Powered Diagnosis Assistant**: Leverage AI to support medical healthcare, identify symptoms, and support decision-making..
+- **Billing and Invoices**: Track, send, and print invoices in the dashboard; manage bills efficiently.
   
 ---
 
@@ -169,7 +170,13 @@ or
 
 ![Image](https://github.com/user-attachments/assets/7262a84d-12d4-4129-bb22-8f363378dc71)
 
-3. That's it! then go fetch your Porject URL and API Key and paste it in `.env` or `.env.local` to connect
+3. Then go fetch your Porject URL and API Key and paste it in `.env` or `.env.local` to connect
+
+4. Go to project settings, get your project ID, then in your terminal, copy and paste the code below to generate types
+
+```sh
+npx supabase gen types typescript --project-id your_project_id  --schema public > types/supabase.ts
+```
 
 ### 🧪 Testing
 Run the test suite using the following command:
