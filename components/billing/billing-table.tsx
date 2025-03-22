@@ -356,11 +356,6 @@ export default function BillingTable({
                         <FileText className="mr-2 h-4 w-4" />
                         Export as PDF
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => generatePdf(record)}>
-                        <Mail className="h-4 w-4 mr-2" />
-                       Send Invoice Email 
-                        
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => onEdit(record)}>
                         <Edit className="mr-2 h-4 w-4" />
                         Edit Invoice
