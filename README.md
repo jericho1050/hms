@@ -52,12 +52,12 @@ CareSanar is an innovative Hospital Management System designed to streamline and
 
 ## 📽 Demo Video
 
-- [Dashboard/Patient Demo][Demo-1]
-- [Patient Edit Demo][Demo-2]
-- [AI Assistant Demo][Demo-3]
-- [Appointment and Staff Demo][Demo-4]
-- [Rooms and Reports & Analytics Demo][Demo-5]
-- [Iventory Demo][Demo-6]
+- 📊 [Dashboard/Patient Demo](https://github.com/user-attachments/assets/d20a29bf-97d1-4748-a9fd-ad45c342a275)
+- 👤 [Patient Edit Demo](https://github.com/user-attachments/assets/59ab8e20-e0d7-48ad-b0be-5780804d1433)
+- 🤖 [AI Assistant Demo](https://github.com/user-attachments/assets/c13465a7-383f-4611-9cb2-f31b9fefb9c0)
+- 📅 [Appointment and Staff Demo](https://github.com/user-attachments/assets/755fbf2c-7009-4c88-aad3-bf2caefc8631)
+- 🏥 [Rooms and Reports & Analytics Demo](https://github.com/user-attachments/assets/e74f5927-043e-4dda-a73b-ca6bc8a8e12f)
+- 📦 [Inventory Demo](https://github.com/user-attachments/assets/6e810481-6ea5-4dc5-a7fe-ec18d0828f1c)
 
 <!--
 **Run from your browser:**
@@ -105,8 +105,8 @@ Ah yes, ofc monolithic, for the serverless model we are using from `https://www.
 
 This account will be **deleted** once the judging period of the hackathon is finished.
 
-email: tester@caresanar.online
-passsword: 123
+- **email**: tester@caresanar.online
+- **passsword**: 123
 
 ### ☑️ Prerequisites
 
