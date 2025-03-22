@@ -43,6 +43,7 @@ export type BillingFilter = {
   paymentStatus?: string;
   minAmount?: number;
   maxAmount?: number;
+  searchTerm?: string;
 };
 
 export type BillingInsert = Omit<

@@ -66,11 +66,6 @@ export function useBilling() {
   // }
   
   async function getBillingStats() {
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-  
-    if (!user || userError) {
-      throw new Error('Unauthorized');
-    }
   
     // Get current month's revenue
     const currentDate = new Date();
@@ -117,11 +112,6 @@ export function useBilling() {
 
 
 async function getBillingRecords(filters?: BillingFilter): Promise<BillingWithPatient[]> {
-  const user = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
 
   let query = supabase
     .from('billing')
@@ -136,7 +126,7 @@ async function getBillingRecords(filters?: BillingFilter): Promise<BillingWithPa
     if (filters.patientId) {
       query = query.eq('patient_id', filters.patientId);
     }
-    if (filters.paymentStatus) {
+    if (filters.paymentStatus && filters.paymentStatus !== '') {
       query = query.eq('payment_status', filters.paymentStatus);
     }
     if (filters.startDate) {
@@ -160,15 +150,26 @@ async function getBillingRecords(filters?: BillingFilter): Promise<BillingWithPa
     throw new Error('Failed to fetch billing records');
   }
 
-  return data as unknown as BillingWithPatient[];
+  let filteredData = data as unknown as BillingWithPatient[];
+  
+  // Filter by patient name if searchTerm is provided
+  if (filters?.searchTerm) {
+    const searchTermLower = filters.searchTerm.toLowerCase();
+    filteredData = filteredData.filter(record => {
+      const patientFirstName = record.patient?.first_name?.toLowerCase() || '';
+      const patientLastName = record.patient?.last_name?.toLowerCase() || '';
+      const fullName = `${patientFirstName} ${patientLastName}`;
+      
+      return fullName.includes(searchTermLower) || 
+             patientFirstName.includes(searchTermLower) || 
+             patientLastName.includes(searchTermLower);
+    });
+  }
+
+  return filteredData;
 }
 
 async function getBillingRecord(id: string): Promise<BillingWithPatient | null> {
-  const user = await supabase.auth.getUser();
-
-  if (!user) {
-    throw new Error('Unauthorized');
-  }
 
   const { data, error } = await supabase
     .from('billing')

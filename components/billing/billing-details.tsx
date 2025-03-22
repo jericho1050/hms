@@ -346,16 +346,6 @@ export default function BillingDetails({ billingId, billingRecord, onClose }: Bi
             {isSendingEmail ? 'Sending...' : 'Send Invoice Email'}
           </Button>
         </div>
-        
-        {/* Export Actions */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm">
-            <Printer className="h-4 w-4 mr-2" /> Print
-          </Button>
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" /> Download PDF
-          </Button>
-        </div>
       </div>
     </div>
 

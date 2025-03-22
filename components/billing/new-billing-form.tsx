@@ -489,7 +489,7 @@ export default function NewBillingForm({ onClose }: NewBillingFormProps) {
               <FormItem>
                 <FormLabel>Insurance Claim ID</FormLabel>
                 <FormControl>
-                  <Input placeholder="Insurance claim ID" {...field} />
+                  <Input placeholder="Insurance claim ID" value={field.value} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

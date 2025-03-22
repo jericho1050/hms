@@ -5,8 +5,6 @@ import { BillingInsert, BillingUpdate, BillingRecord } from '@/types/billing';
 import { revalidatePath } from 'next/cache';
 
 // Add Mailgun integration
-import formData from 'form-data';
-import Mailgun from 'mailgun.js';
 import { sendInvoice } from '@/lib/mail';
 
 export async function createBillingRecord(billing: BillingInsert): Promise<string> {
@@ -34,11 +32,7 @@ export async function createBillingRecord(billing: BillingInsert): Promise<strin
 
 export async function updateBillingRecord(id: string, billing: BillingUpdate): Promise<void> {
   const supabase = await createClient();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-  if (!user || userError) {
-    throw new Error('Unauthorized');
-  }
 
   // If the services field is an array, convert it to a JSONB string
   if (billing.services && Array.isArray(billing.services)) {

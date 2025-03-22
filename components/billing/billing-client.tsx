@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useBilling } from '@/hooks/use-billing';
-import { BillingWithPatient } from '@/types/billing';
+import { BillingWithPatient, BillingFilter } from '@/types/billing';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CalendarIcon, Download, Plus, RefreshCw } from 'lucide-react';
@@ -32,11 +32,29 @@ export default function BillingClient() {
   const [openDeleteAlert, setOpenDeleteAlert] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedRecord, setSelectedRecord] = useState<BillingWithPatient | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<BillingFilter>({});
 
   useEffect(() => {
     fetchBillingRecords();
     fetchBillingStats();
   }, []);
+
+  const handleFilterChange = (key: keyof BillingFilter, value: any) => {
+    const newFilters = {
+      ...filters,
+      [key]: value
+    };
+    
+    setFilters(newFilters);
+    fetchBillingRecords(newFilters);
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setFilters({});
+    fetchBillingRecords({});
+  };
 
   const handleViewDetails = (id: string) => {
     const record = records.find(r => r.id === id);
@@ -182,7 +200,13 @@ export default function BillingClient() {
       </div>
 
       {/* Filters */}
-      <BillingFilters />
+      <BillingFilters 
+        filters={filters}
+        searchTerm={searchTerm}
+        setSearchTerm={setSearchTerm}
+        onFilterChange={handleFilterChange}
+        onResetFilters={handleResetFilters}
+      />
 
       {/* Table */}
       <BillingTable 
