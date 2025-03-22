@@ -230,8 +230,8 @@ export function FloatingDiagnosisAssistant({
                             {section.title}
                           </div>
                           
-                          <div className="pl-2 border-l-2 border-muted">
-                            <div className="whitespace-pre-line">
+                          <div className="prose prose-sm dark:prose-invert max-w-none text-xs p-3 pt-0 dark:bg-gray-800">
+                          <div className="whitespace-pre-line">
                               <ReactMarkdown>
                                 {section.content}
                               </ReactMarkdown>

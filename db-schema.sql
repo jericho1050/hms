@@ -1,70 +1,70 @@
 -- Ensure the uuid-ossp extension is available
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--------------- VIEWS ----------------------------
-create view public.appointment_dashboard_view as 
-SELECT a.id,
-    a.created_at,
-    a.updated_at,
-    a.patient_id AS patientid,
-    (p.first_name || ' '::text) || p.last_name AS patientname,
-    a.staff_id AS doctorid,
-    (s.first_name || ' '::text) || s.last_name AS doctorname,
-    d.name AS department,
-    a.appointment_date::text AS date,
-    a.start_time::text AS starttime,
-    a.end_time::text AS endtime,
-    a.status,
-    a.appointment_type AS type,
-    a.notes,
-    a.room_number,
-    EXTRACT(dow FROM a.appointment_date) AS dayofweek,
-    EXTRACT(week FROM a.appointment_date) AS weeknumber,
-    EXTRACT(month FROM a.appointment_date) AS month,
-    EXTRACT(year FROM a.appointment_date) AS year,
-    a.appointment_date = CURRENT_DATE AS istoday,
-        CASE a.status
-            WHEN 'completed'::text THEN true
-            ELSE false
-        END AS iscompleted,
-        CASE a.status
-            WHEN 'no-show'::text THEN true
-            ELSE false
-        END AS isnoshow,
-        CASE a.status
-            WHEN 'scheduled'::text THEN true
-            ELSE false
-        END AS ispending
-FROM appointments a
-    JOIN patients p ON a.patient_id = p.id
-    JOIN staff s ON a.staff_id = s.id
-    LEFT JOIN departments d ON s.department = d.name;
 
-create view public.appointment_stats as 
-SELECT count(*) FILTER (WHERE appointment_dashboard_view.istoday) AS totaltoday,
-    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.iscompleted) AS completed,
-    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.isnoshow) AS noshows,
-    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.ispending) AS pending
-FROM appointment_dashboard_view;
-
-create view public.dashboard_metrics as 
-SELECT ( SELECT count(*) AS count
-        FROM patients) AS total_patients,
-    ( SELECT count(*) AS count
-        FROM staff) AS total_staff,
-    ( SELECT count(*) AS count
-        FROM appointments
-       WHERE appointments.appointment_date = CURRENT_DATE) AS today_appointments,
-    ( SELECT sum(billing.total_amount) AS sum
-        FROM billing
-       WHERE EXTRACT(month FROM billing.invoice_date) = EXTRACT(month FROM CURRENT_DATE)) AS monthly_revenue,
-    (( SELECT avg(rooms.current_occupancy::double precision / rooms.capacity::double precision) AS avg
-        FROM rooms)) * 100::double precision AS bed_occupancy_rate,
-    ( SELECT count(*) AS count
-        FROM inventory) AS total_inventory_items;
---------------------------------------------------------------------------------
 
 ---------------- TABLES ------------------------
+
+CREATE TABLE public.patients (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  first_name text NOT NULL,
+  last_name text NOT NULL,
+  date_of_birth date NOT NULL,
+  gender text NOT NULL,
+  address text NOT NULL,
+  phone text NOT NULL,
+  email text NOT NULL,
+  insurance_provider text NULL,
+  insurance_id text NULL,
+  emergency_contact_name text NULL,
+  emergency_contact_phone text NULL,
+  allergies text[] NULL,
+  blood_type text NULL,
+  marital_status text NULL,
+  city text NULL,
+  state text NULL,
+  zip_code text NULL,
+  emergency_contact_relationship text NULL,
+  insurance_group_number text NULL,
+  current_medications text NULL,
+  past_surgeries text NULL,
+  chronic_conditions text NULL,
+  policy_holder_name text NULL,
+  relationship_to_patient text NULL,
+  emergency_contact_address text NULL,
+  status text NOT NULL DEFAULT 'Admitted',
+  CONSTRAINT check_patient_status CHECK (status IN ('Admitted', 'Discharged', 'Outpatient')),
+  CONSTRAINT patients_pkey PRIMARY KEY (id),
+  CONSTRAINT check_relationship_to_patient CHECK (((relationship_to_patient IS NULL) OR (relationship_to_patient = ANY (ARRAY['self'::text, 'spouse'::text, 'parent'::text, 'other'::text]))))
+) TABLESPACE pg_default;
+CREATE INDEX IF NOT EXISTS idx_patients_name ON public.patients USING btree (last_name, first_name) TABLESPACE pg_default;
+
+CREATE TABLE public.staff (
+  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  user_id uuid,
+  first_name text NOT NULL,
+  last_name text NOT NULL,
+  role text NOT NULL,
+  department text NOT NULL,
+  specialty text NULL,
+  qualification text NULL,
+  joining_date date NOT NULL,
+  contact_number text NOT NULL,
+  email text NOT NULL,
+  address text NULL,
+  status text NOT NULL,
+  license_number text NULL,
+  availability JSONB DEFAULT '{}'::jsonb,
+  CONSTRAINT staff_pkey PRIMARY KEY (id)
+) TABLESPACE pg_default;
+CREATE INDEX IF NOT EXISTS idx_staff_department ON public.staff USING btree (department) TABLESPACE pg_default;
+
+
+
 CREATE TABLE public.appointments (
   id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
   created_at timestamp with time zone NOT NULL DEFAULT now(),
@@ -169,41 +169,7 @@ CREATE TABLE public.medical_records (
 ) TABLESPACE pg_default;
 CREATE INDEX IF NOT EXISTS idx_medical_records_patient ON public.medical_records USING btree (patient_id) TABLESPACE pg_default;
 
-CREATE TABLE public.patients (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  first_name text NOT NULL,
-  last_name text NOT NULL,
-  date_of_birth date NOT NULL,
-  gender text NOT NULL,
-  address text NOT NULL,
-  phone text NOT NULL,
-  email text NOT NULL,
-  insurance_provider text NULL,
-  insurance_id text NULL,
-  emergency_contact_name text NULL,
-  emergency_contact_phone text NULL,
-  allergies text[] NULL,
-  blood_type text NULL,
-  marital_status text NULL,
-  city text NULL,
-  state text NULL,
-  zip_code text NULL,
-  emergency_contact_relationship text NULL,
-  insurance_group_number text NULL,
-  current_medications text NULL,
-  past_surgeries text NULL,
-  chronic_conditions text NULL,
-  policy_holder_name text NULL,
-  relationship_to_patient text NULL,
-  emergency_contact_address text NULL,
-  status text NOT NULL DEFAULT 'Admitted',
-  CONSTRAINT check_patient_status CHECK (status IN ('Admitted', 'Discharged', 'Outpatient')),
-  CONSTRAINT patients_pkey PRIMARY KEY (id),
-  CONSTRAINT check_relationship_to_patient CHECK (((relationship_to_patient IS NULL) OR (relationship_to_patient = ANY (ARRAY['self'::text, 'spouse'::text, 'parent'::text, 'other'::text]))))
-) TABLESPACE pg_default;
-CREATE INDEX IF NOT EXISTS idx_patients_name ON public.patients USING btree (last_name, first_name) TABLESPACE pg_default;
+
 
 CREATE TABLE public.rooms (
   id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
@@ -265,27 +231,6 @@ LEFT JOIN patient_room_assignments pra ON r.id = pra.room_id
 GROUP BY r.id, r.room_number, r.department_id, d.name, date_trunc('day', pra.admission_date), r.capacity
 ORDER BY date_trunc('day', pra.admission_date) DESC, r.room_number;
 
-CREATE TABLE public.staff (
-  id uuid NOT NULL DEFAULT extensions.uuid_generate_v4(),
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  user_id uuid,
-  first_name text NOT NULL,
-  last_name text NOT NULL,
-  role text NOT NULL,
-  department text NOT NULL,
-  specialty text NULL,
-  qualification text NULL,
-  joining_date date NOT NULL,
-  contact_number text NOT NULL,
-  email text NOT NULL,
-  address text NULL,
-  status text NOT NULL,
-  license_number text NULL,
-  availability JSONB DEFAULT '{}'::jsonb,
-  CONSTRAINT staff_pkey PRIMARY KEY (id)
-) TABLESPACE pg_default;
-CREATE INDEX IF NOT EXISTS idx_staff_department ON public.staff USING btree (department) TABLESPACE pg_default;
 
 CREATE TABLE public.report_schedules (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -337,6 +282,69 @@ CREATE INDEX IF NOT EXISTS idx_ai_diagnosis_logs_patient ON public.ai_diagnosis_
 CREATE INDEX IF NOT EXISTS idx_ai_diagnosis_logs_user ON public.ai_diagnosis_logs USING btree (user_id);
 
 --------------------------------------------------------------------------------------------------------------
+
+-------------- VIEWS ----------------------------
+create view public.appointment_dashboard_view as 
+SELECT a.id,
+    a.created_at,
+    a.updated_at,
+    a.patient_id AS patientid,
+    (p.first_name || ' '::text) || p.last_name AS patientname,
+    a.staff_id AS doctorid,
+    (s.first_name || ' '::text) || s.last_name AS doctorname,
+    d.name AS department,
+    a.appointment_date::text AS date,
+    a.start_time::text AS starttime,
+    a.end_time::text AS endtime,
+    a.status,
+    a.appointment_type AS type,
+    a.notes,
+    a.room_number,
+    EXTRACT(dow FROM a.appointment_date) AS dayofweek,
+    EXTRACT(week FROM a.appointment_date) AS weeknumber,
+    EXTRACT(month FROM a.appointment_date) AS month,
+    EXTRACT(year FROM a.appointment_date) AS year,
+    a.appointment_date = CURRENT_DATE AS istoday,
+        CASE a.status
+            WHEN 'completed'::text THEN true
+            ELSE false
+        END AS iscompleted,
+        CASE a.status
+            WHEN 'no-show'::text THEN true
+            ELSE false
+        END AS isnoshow,
+        CASE a.status
+            WHEN 'scheduled'::text THEN true
+            ELSE false
+        END AS ispending
+FROM appointments a
+    JOIN patients p ON a.patient_id = p.id
+    JOIN staff s ON a.staff_id = s.id
+    LEFT JOIN departments d ON s.department = d.name;
+
+create view public.appointment_stats as 
+SELECT count(*) FILTER (WHERE appointment_dashboard_view.istoday) AS totaltoday,
+    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.iscompleted) AS completed,
+    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.isnoshow) AS noshows,
+    count(*) FILTER (WHERE appointment_dashboard_view.istoday AND appointment_dashboard_view.ispending) AS pending
+FROM appointment_dashboard_view;
+
+create view public.dashboard_metrics as 
+SELECT ( SELECT count(*) AS count
+        FROM patients) AS total_patients,
+    ( SELECT count(*) AS count
+        FROM staff) AS total_staff,
+    ( SELECT count(*) AS count
+        FROM appointments
+       WHERE appointments.appointment_date = CURRENT_DATE) AS today_appointments,
+    ( SELECT sum(billing.total_amount) AS sum
+        FROM billing
+       WHERE EXTRACT(month FROM billing.invoice_date) = EXTRACT(month FROM CURRENT_DATE)) AS monthly_revenue,
+    (( SELECT avg(rooms.current_occupancy::double precision / rooms.capacity::double precision) AS avg
+        FROM rooms)) * 100::double precision AS bed_occupancy_rate,
+    ( SELECT count(*) AS count
+        FROM inventory) AS total_inventory_items;
+--------------------------------------------------------------------------------
 
 ---------------- Functions ------------------------
 CREATE OR REPLACE FUNCTION public.update_updated_at_column()
@@ -540,18 +548,16 @@ BEGIN
   -- First, reset all rooms to 0 occupancy
   UPDATE rooms SET current_occupancy = 0;
   
-  -- Then recalculate based on current assignments
+  -- Then calculate the current occupancy for each room based on active assignments
   UPDATE rooms r
-  SET current_occupancy = COALESCE(count_occupied.occupied_count, 0)
+  SET current_occupancy = LEAST(r.capacity, COALESCE(subquery.count, 0))
   FROM (
-    SELECT room_id, COUNT(*) as occupied_count 
-    FROM patient_room_assignments 
+    SELECT room_id, COUNT(*) as count
+    FROM patient_room_assignments
     WHERE discharge_date IS NULL
     GROUP BY room_id
-  ) count_occupied
-  WHERE r.id = count_occupied.room_id;
-  
-  -- The trigger will automatically update the status field
+  ) subquery
+  WHERE r.id = subquery.room_id;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -729,8 +735,6 @@ AFTER DELETE ON billing
 FOR EACH STATEMENT
 EXECUTE FUNCTION update_financial_historical_metrics();
 
--- Optional: Run the function once to populate current metrics
-SELECT update_financial_historical_metrics(); 
 
 CREATE TRIGGER update_ai_diagnosis_logs_updated_at
 BEFORE UPDATE ON public.ai_diagnosis_logs
@@ -820,4 +824,37 @@ USING (is_user_in_staff());
 CREATE POLICY "Staff can insert their own logs" ON public.ai_diagnosis_logs
 FOR INSERT
 TO authenticated
-WITH CHECK (is_user_in_staff() AND user_id = auth.uid());
+WITH CHECK (is_user_in_staff() AND user_id = auth.uid()); 
+
+
+CREATE POLICY "Admin can access all" ON public.report_schedules
+FOR ALL
+TO authenticated
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Staff can read" ON public.report_schedules
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+
+CREATE POLICY "Admin can access all" ON public.rooms
+FOR ALL
+TO authenticated
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Staff can read" ON public.rooms
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());
+
+
+CREATE POLICY "Admin can access all" ON public.staff
+FOR ALL
+TO authenticated
+USING (is_user_in_staff() AND is_admin());
+
+CREATE POLICY "Staff can read" ON public.staff
+FOR SELECT
+TO authenticated
+USING (is_user_in_staff());

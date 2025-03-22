@@ -135,7 +135,6 @@ export function RoomsManagement() {
 
   const handleAssignBed = async (roomId: string, bedId: string, patientId: string, patientName:string | undefined, admissionDate: string, expectedDischargeDate?: string, isEmergency: boolean = false) => {
     try {
-
       const assignedBy = staffId || "00000000-0000-0000-0000-000000000000"
       
       // Call server action
@@ -187,12 +186,16 @@ export function RoomsManagement() {
           description: "The patient has been assigned to the bed.",
           variant: "default",
         })
+        
+        // Return the updated room for immediate use
+        return updatedRooms.find(room => room.id === roomId)
       } else {
         toast({
           title: "Error assigning bed",
           description: result.error || "Something went wrong.",
           variant: "destructive",
         })
+        return null
       }
     } catch (error) {
       toast({
@@ -200,9 +203,10 @@ export function RoomsManagement() {
         description: "An unexpected error occurred.",
         variant: "destructive",
       })
+      return null
+    } finally {
+      setSelectedBed(null)
     }
-    
-    setSelectedBed(null)
   }
   
   const handleReleaseBed = async (roomId: string, bedId: string, notes?: string) => {
@@ -245,17 +249,16 @@ export function RoomsManagement() {
         })
   
         setRooms(updatedRooms)
-        toast({
-          title: "Bed released successfully",
-          description: "The bed is now available.",
-          variant: "default",
-        })
+        
+        // Return the updated room for immediate use
+        return updatedRooms.find(room => room.id === roomId)
       } else {
         toast({
           title: "Error releasing bed",
           description: result.error || "Something went wrong.",
           variant: "destructive",
         })
+        return null
       }
     } catch (error) {
       toast({
@@ -263,6 +266,7 @@ export function RoomsManagement() {
         description: "An unexpected error occurred.",
         variant: "destructive",
       })
+      return null
     }
   }
 
@@ -528,12 +532,11 @@ export function RoomsManagement() {
             setSelectedRoom(null)
           }}
           onReleaseBed={(bedId, notes) => {
-            handleReleaseBed(selectedRoom.id, bedId, notes)
-            // Refresh selected room data
-            const updatedRoom = rooms.find((r) => r.id === selectedRoom.id)
-            if (updatedRoom) {
-              setSelectedRoom(updatedRoom)
-            }
+            handleReleaseBed(selectedRoom.id, bedId, notes).then(updatedRoom => {
+              if (updatedRoom) {
+                setSelectedRoom(updatedRoom);
+              }
+            });
           }}
           getRoomHistory={getRoomHistory}
         />

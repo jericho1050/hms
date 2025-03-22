@@ -922,9 +922,9 @@ export async function POST(request: Request) {
 
     const { data: scheduledReports, error } = await supabase
       .from('report_schedules')
-      .select('*');
+      .select('*')
       // Use this line when actually deploying to production
-      // .lte('next_run', now.toISOString());
+      .lte('next_run', now.toISOString());
       
     if (error) {
       console.error('Error fetching scheduled reports:', error);
