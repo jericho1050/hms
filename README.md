@@ -84,7 +84,7 @@ CareSanar is an innovative Hospital Management System designed to streamline and
 - **Medical Records**: Maintain secure and accessible electronic medical records.
 - **Iventory Management**: Keep track of inventory and give insigths to each item. Ensuring an item doesn't go low in stock.
 - **AI-Powered Diagnosis Assistant**: Leverage AI to support medical healthcare, identify symptoms, and support decision-making..
-- **Billing and Invoices**: Track, send, and print invoices in the dashboard; manage bills efficiently.
+- **Billing and Invoices**: Track, send, and print invoices in the dashboard; Process and manage bills/invoice efficiently.
   
 ---
 
