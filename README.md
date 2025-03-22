@@ -31,6 +31,7 @@
 - [📽 Demo Video](#-demo-video)
 - [👾 Features](#-features)
 - [🚀 Getting Started](#-getting-started)
+  - [Test Account in production (Demo)](#test-account-in-production-demo)
   - [☑️ Prerequisites](#️-prerequisites)
   - [⚙️ Installation](#️-installation)
   - [🤖 Usage](#-usage)
@@ -39,6 +40,7 @@
 - [🔰 Contributing](#-contributing)
 - [🎗 License](#-license)
 - [🙌 Acknowledgments](#-acknowledgments)
+- [Discord](#discord)
 
 ---
 
@@ -50,14 +52,23 @@ CareSanar is an innovative Hospital Management System designed to streamline and
 
 ## 📽 Demo Video
 
-[Dashboard/Patient Demo][Demo-1]
-[Patient Edit Demo][Demo-2]
-[AI Assistant Demo][Demo-3]
-[Appointment and Staff Demo][Demo-4]
-[Rooms and Reports & Analytics Demo][Demo-5]
-[Iventory Demo][Demo-6]
+- [Dashboard/Patient Demo][Demo-1]
+- [Patient Edit Demo][Demo-2]
+- [AI Assistant Demo][Demo-3]
+- [Appointment and Staff Demo][Demo-4]
+- [Rooms and Reports & Analytics Demo][Demo-5]
+- [Iventory Demo][Demo-6]
 
+<!--
+**Run from your browser:**
 
+[demo1][Dashboard/Patient Demo]
+[demo2][Patient Edit Demo]
+[demo3][AI Assistant Demo]
+[demo4][Appointment and Staff Demo]
+[demo5][Rooms and Reports & Analytics Demo]
+[demo6][Iventory Demo]
+-->
 
 ---
 
@@ -89,6 +100,13 @@ Ah yes, ofc monolithic, for the serverless model we are using from `https://www.
 ---
 
 ## 🚀 Getting Started
+
+### Test Account in production (Demo)
+
+This account will be **deleted** once the judging period of the hackathon is finished.
+
+email: tester@caresanar.online
+passsword: 123
 
 ### ☑️ Prerequisites
 
@@ -175,7 +193,7 @@ Run the test suite using the following command:
 2. **Clone Locally**: Clone the forked repository to your local machine using a git client.
 
    ```sh
-   git clone https://github.com/jericho1050/hms
+   git clone https://github.com/jericho1050/caresanar
    ```
 
 3. **Create a New Branch**: Always work on a new branch, giving it a descriptive name.
@@ -225,6 +243,10 @@ This project is protected under the [Apache License](https://choosealicense.com/
 ## 🙌 Acknowledgments
 
 <!-- - List any resources, contributors, inspiration, etc. here. -->
+
+## Discord
+
+![Discord](https://img.shields.io/badge/Discord-%235865F2.svg?style=for-the-badge&logo=discord&logoColor=white) jericho1050
 
 ---
 
