@@ -453,8 +453,8 @@ export function useReports() {
       if (patientData) {
         patientData.forEach(patient => {
           // Gender counts
-          if (patient.gender === 'male') genderCounts.Male++
-          else if (patient.gender === 'female') genderCounts.Female++
+          if (patient.gender.toLowerCase() === 'male') genderCounts.Male++
+          else if (patient.gender.toLowerCase() === 'female') genderCounts.Female++
           else genderCounts.Other++
 
           // Age counts
