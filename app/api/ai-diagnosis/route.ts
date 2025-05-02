@@ -4,6 +4,9 @@ import { createClient } from '@/utils/supabase/server';
 import { systemPrompt } from './utils';
 import { calculateAge } from '@/lib/utils';  
 
+
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   try {
     // Verify authentication
